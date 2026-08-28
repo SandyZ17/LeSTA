@@ -14,6 +14,7 @@ FEATURE_NAMES = (
     "linear_x_pchip", "angular_z_pchip", "accel_x", "accel_y", "accel_z",
     "gyro_x", "gyro_y", "gyro_z", "delta_t",
 )
+TERRAIN_FEATURE_NAMES = ("step", "slope", "roughness", "curvature")
 
 
 def load_rows(frame_dir: Path):
@@ -21,8 +22,10 @@ def load_rows(frame_dir: Path):
         aligned = list(csv.DictReader(stream))
     with (frame_dir / "imu.csv").open(newline="") as stream:
         imu_rows = sorted(csv.DictReader(stream), key=lambda row: int(row["stamp_ns"]))
+    with (frame_dir / "terrain_features.csv").open(newline="") as stream:
+        terrain_rows = list(csv.DictReader(stream))
     imu_times = np.asarray([int(row["stamp_ns"]) for row in imu_rows], dtype=np.int64)
-    return aligned, imu_rows, imu_times
+    return aligned, imu_rows, imu_times, terrain_rows
 
 
 def nearest_imu(imu_rows, imu_times, stamp_ns):
@@ -42,7 +45,9 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
         raise ValueError("stride must be positive")
     if max_imu_skew_ms < 0:
         raise ValueError("max_imu_skew_ms must be non-negative")
-    aligned, imu_rows, imu_times = load_rows(frame_dir)
+    aligned, imu_rows, imu_times, terrain_rows = load_rows(frame_dir)
+    if len(terrain_rows) != len(aligned):
+        raise ValueError("terrain_features.csv must contain one row per aligned frame")
     frame_features = []
     valid = []
     for index, row in enumerate(aligned):
@@ -57,6 +62,7 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
             float(imu["accel_x"]), float(imu["accel_y"]), float(imu["accel_z"]),
             float(imu["gyro_x"]), float(imu["gyro_y"]), float(imu["gyro_z"]),
             (stamp_ns - previous_stamp) / 1e9,
+            *[float(terrain_rows[index][name]) for name in TERRAIN_FEATURE_NAMES],
         ])
         valid.append(is_valid)
 
@@ -81,7 +87,7 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
         features=sequences,
         frame_indices=frame_indices,
         pcd_files=pcd_files,
-        feature_names=np.asarray(FEATURE_NAMES),
+        feature_names=np.asarray(FEATURE_NAMES + TERRAIN_FEATURE_NAMES),
         window_size=window_size,
     )
 
