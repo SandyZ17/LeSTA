@@ -111,6 +111,17 @@ For the required GPU run, use the CUDA-enabled Compose profile:
 docker compose --profile training run --rm temporal-train
 ```
 
+To override training arguments, provide the full command explicitly because
+Compose treats arguments after the service name as a command replacement:
+
+```bash
+docker compose --profile training run --rm temporal-train \
+  python3 /workspace/lesta_ws/src/LeSTA/pylesta/tools/train_temporal_mlp.py \
+  --windows /workspace/lesta_ws/src/LeSTA/data_preprocessing/datasets/urban_traversability/frames/parking_lot/temporal/temporal_windows.npz \
+  --output /workspace/lesta_ws/src/LeSTA/logs/temporal_mlp_terrain.pt \
+  --device cuda --epochs 30 --feature-mode terrain
+```
+
 The service passes through all NVIDIA GPUs and the script fails explicitly if
 CUDA is not visible. Verify that NVIDIA Container Toolkit is installed.
 
