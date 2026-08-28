@@ -9,6 +9,21 @@ LeSTA combines a ROS 2 Humble stack with a Python/PyTorch training package:
 - `pylesta/`: Python training and inference code; models, datasets, losses, utilities, configs, and CLI tools are grouped by package.
 - `assets/`: README figures and demonstration animations. Keep generated datasets, checkpoints, bags, and `.pcd` files out of commits; `.gitignore` already excludes them.
 
+## Temporal Model Roadmap
+
+Work on temporal learning belongs on `feature/temporal-model`; keep the ROS 2/Docker baseline stable.
+
+- [ ] Record and synchronize LiDAR, TF, vehicle speed, acceleration, steering, wheel speed, and IMU data.
+- [ ] Define a sequence dataset format with aligned timestamps and 5–10-frame windows. Split by driving sequence to prevent leakage between train and test data.
+- [ ] Extend label generation with vehicle motion and IMU signals while retaining footprint and height-step labels as the baseline.
+- [ ] Implement a feature-enhanced Temporal MLP using terrain features plus vehicle-state features.
+- [ ] Preserve the original LeSTA MLP and, where possible, learn a residual correction rather than replacing it immediately.
+- [ ] Compare the baseline MLP, feature-enhanced MLP, Temporal MLP, small GRU/LSTM, and XGBoost under the same data split.
+- [ ] Export the selected model to TorchScript/LibTorch and integrate inference into the ROS 2 pipeline.
+- [ ] Evaluate end-to-end latency, processing rate, dropped frames, resource usage, classification quality, planning success, vibration, and vehicle stability.
+
+Do not add large point-cloud or Transformer models until the lightweight temporal baseline has been measured and shown to be insufficient.
+
 ## Build, Test, and Development Commands
 
 From the workspace root (or inside the provided Docker container):
