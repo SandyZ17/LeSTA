@@ -24,8 +24,10 @@ def load_rows(frame_dir: Path):
         imu_rows = sorted(csv.DictReader(stream), key=lambda row: int(row["stamp_ns"]))
     with (frame_dir / "terrain_features.csv").open(newline="") as stream:
         terrain_rows = list(csv.DictReader(stream))
+    with (frame_dir / "traversability_labels.csv").open(newline="") as stream:
+        label_rows = list(csv.DictReader(stream))
     imu_times = np.asarray([int(row["stamp_ns"]) for row in imu_rows], dtype=np.int64)
-    return aligned, imu_rows, imu_times, terrain_rows
+    return aligned, imu_rows, imu_times, terrain_rows, label_rows
 
 
 def nearest_imu(imu_rows, imu_times, stamp_ns):
@@ -45,9 +47,11 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
         raise ValueError("stride must be positive")
     if max_imu_skew_ms < 0:
         raise ValueError("max_imu_skew_ms must be non-negative")
-    aligned, imu_rows, imu_times, terrain_rows = load_rows(frame_dir)
+    aligned, imu_rows, imu_times, terrain_rows, label_rows = load_rows(frame_dir)
     if len(terrain_rows) != len(aligned):
         raise ValueError("terrain_features.csv must contain one row per aligned frame")
+    if len(label_rows) != len(aligned):
+        raise ValueError("traversability_labels.csv must contain one row per aligned frame")
     frame_features = []
     valid = []
     for index, row in enumerate(aligned):
@@ -82,11 +86,13 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
         [aligned[index]["pcd_file"] for index in range(start, end + 1)]
         for start, end in windows
     ])
+    labels = np.asarray([int(label_rows[end]["label"]) for _, end in windows], dtype=np.int8)
     np.savez_compressed(
         output_dir / "temporal_windows.npz",
         features=sequences,
         frame_indices=frame_indices,
         pcd_files=pcd_files,
+        labels=labels,
         feature_names=np.asarray(FEATURE_NAMES + TERRAIN_FEATURE_NAMES),
         window_size=window_size,
     )
