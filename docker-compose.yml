@@ -18,3 +18,23 @@ services:
       - ./:/workspace/lesta_ws/src/LeSTA
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     command: /bin/bash
+
+  temporal-train:
+    profiles: ["training"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: lesta:cuda12.9
+    working_dir: /workspace/lesta_ws
+    shm_size: "8gb"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    gpus: all
+    volumes:
+      - ./:/workspace/lesta_ws/src/LeSTA
+    command: >-
+      python3 /workspace/lesta_ws/src/LeSTA/pylesta/tools/train_temporal_mlp.py
+      --windows /workspace/lesta_ws/src/LeSTA/data_preprocessing/datasets/urban_traversability/frames/parking_lot/temporal/temporal_windows.npz
+      --output /workspace/lesta_ws/src/LeSTA/logs/temporal_mlp.pt
+      --device cuda

@@ -47,7 +47,7 @@ def evaluate(model, loader, device, positive_prior):
     scores, labels = [], []
     with torch.no_grad():
         for features, target in loader:
-            logits = model(features.to(device))
+            logits = model(features.to(device, non_blocking=True))
             scores.extend(torch.sigmoid(logits).cpu().numpy())
             labels.extend(target.numpy())
     scores = np.asarray(scores)
@@ -70,12 +70,15 @@ def main(args):
     std[std < 1e-6] = 1.0
     train_x = (train_x - mean) / std
     val_x = (val_x - mean) / std
+    if args.device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA requested but is unavailable. Run through Docker with --gpus all.")
+    device = torch.device(args.device)
+    print(f"Using device: {device}")
+    loader_kwargs = {"pin_memory": device.type == "cuda"}
     train = DataLoader(TensorDataset(torch.from_numpy(train_x), torch.from_numpy(train_y)),
-                       batch_size=args.batch_size, shuffle=True)
+                       batch_size=args.batch_size, shuffle=True, **loader_kwargs)
     val = DataLoader(TensorDataset(torch.from_numpy(val_x), torch.from_numpy(val_y)),
-                     batch_size=args.batch_size)
-
-    device = torch.device("cpu")
+                     batch_size=args.batch_size, **loader_kwargs)
     model = TemporalMLP(features.shape[-1], args.hidden_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     for epoch in range(1, args.epochs + 1):
@@ -85,7 +88,8 @@ def main(args):
             if not ((batch_y == 1).any() and (batch_y == -1).any()):
                 continue
             optimizer.zero_grad()
-            loss = pu_loss(model(batch_x), batch_y, args.positive_prior)
+            loss = pu_loss(model(batch_x.to(device, non_blocking=True)),
+                           batch_y.to(device, non_blocking=True), args.positive_prior)
             loss.backward()
             optimizer.step()
             train_losses.append(float(loss.detach()))
@@ -112,5 +116,6 @@ if __name__ == "__main__":
     parser.add_argument("--positive-prior", type=float, default=0.5)
     parser.add_argument("--train-ratio", type=float, default=0.8)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
     args = parser.parse_args()
     main(args)
