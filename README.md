@@ -25,11 +25,13 @@
 By leveraging a short period of manual driving, it provides an end-to-end pipeline from label generation to real-time traversability prediction and mapping.
 
 **🎉 News & Updates:**
+
 - **2024.07.30**: Our paper is accepted for presentation at **IEEE ICRA@40** in Rotterdam, Netherlands
 - **2024.02.29**: Our paper is accepted by **IEEE Robotics and Automation Letters** (**RA-L**)
 - **2024.02.19**: Release **public dataset** for learning terrain traversability in urban environments
 
 **🧩 Related projects:**
+
 - **[FastDEM](https://github.com/Ikhyeon-Cho/FastDEM)** — Ultra-fast elevation mapping on embedded robots
 - **EviGround** — (in preparation)
 
@@ -38,6 +40,7 @@ By leveraging a short period of manual driving, it provides an end-to-end pipeli
 ## Installation
 
 Our project is built on [ROS](https://www.ros.org/), successfully tested on the following setup.
+
 - Ubuntu 20.04 / ROS Noetic
 - PyTorch 2.2.2 / LibTorch 2.6.0
 
@@ -46,6 +49,7 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
 ### lesta_ros
 
 1. Install [Grid Map](https://github.com/ANYbotics/grid_map) library for height mapping:
+
    ```bash
    sudo apt install ros-noetic-grid-map -y
    ```
@@ -59,6 +63,7 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
    sudo unzip ~/Downloads/libtorch-cxx11-abi-shared-with-deps-2.6.0+cpu.zip -d /opt
    rm ~/Downloads/libtorch-cxx11-abi-shared-with-deps-2.6.0+cpu.zip
    ```
+
    </details>
 
    <details>
@@ -67,9 +72,11 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
    ```bash
    # To be updated...
    ```
+
    </details>
-   
+
 3. Build [lesta_ros](https://github.com/Ikhyeon-Cho/LeSTA/tree/master/lesta_ros/) package:
+
    ```bash
    cd ~/ros_ws/src
    git clone https://github.com/Ikhyeon-Cho/LeSTA.git
@@ -79,6 +86,7 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
    ```
 
 **Notes:**
+
 - We recommend starting without GPU processing. The network effectively runs on a single CPU core.
 - If you are interested in height map reconstruction, see [height_mapping](https://github.com/Ikhyeon-Cho/height_mapping) for more details.
 
@@ -94,6 +102,7 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
    > We recommend using a virtual environment for PyTorch installation.
 
    **Conda**
+
       ```bash
       conda create -n lesta python=3.8 -y
       conda activate lesta
@@ -101,11 +110,13 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
       ```
 
    **Virtualenv**
+
    ```bash
     virtualenv -p python3.8 lesta-env
     source lesta-env/bin/activate
     pip install torch==2.2 torchvision tensorboard --index-url https://download.pytorch.org/whl/cpu
    ```
+
    </details>
 
    <details>
@@ -115,6 +126,7 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
    > We recommend using a virtual environment for PyTorch installation.
 
    **Conda**
+
    ```bash
    conda create -n lesta python=3.8 -y
    conda activate lesta
@@ -122,11 +134,13 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
    ```
 
    **Virtualenv**
+
    ```bash
    virtualenv -p python3.8 lesta-env
    source lesta-env/bin/activate
    pip install torch==2.2 torchvision tensorboard --index-url https://download.pytorch.org/whl/cu118
    ```
+
    </details>
 
 2. Install [pylesta](https://github.com/Ikhyeon-Cho/LeSTA/tree/master/pylesta/) package:
@@ -138,6 +152,7 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
    ```
 
 ### Using Docker
+
 To be updated...
 
 ---
@@ -149,26 +164,37 @@ The pipeline consists of three steps: **label generation → model training → 
 > **Note:** We highly recommend training with your own robot's data. The robot's unique sensor setup and motion dynamics are crucial for accurate traversability predictions. For rapid testing, use checkpoints from [#Model Zoo](#model-zoo) and skip to [Step 3](#3-traversability-estimation).
 
 ### 1. Label Generation
+
 #### Launch ROS node
+
 ```bash
 roslaunch lesta label_generation.launch
 ```
+
 #### Generate labels with rosbag
+>
 > **Note:** See [#dataset](#dataset) for example rosbag files.
+
 ```bash
 rosbag play {your-rosbag}.bag --clock -r 3
 ```
+
 #### Save traversability labels
+
 ```bash
 rosservice call /lesta/save_label_map "training_set" ""  # {filename} {directory}
 ```
+
 > The labeled height map will be saved as a single `training_set.pcd` file in the root directory of the package.
 
 <br>
 
 ### 2. Model Training
+
 #### Launch training script with parameters
+>
 > **Note:** See `pylesta/configs/lesta.yaml` for more training details.
+
 ```bash
 # Make sure your virtual environment is activated
 cd LeSTA
@@ -180,12 +206,16 @@ python pylesta/tools/train.py --dataset "training_set.pcd"
 ### 3. Traversability Estimation
 
 #### Prerequisites
+
 Configure `model_path` variable in `lesta_ros/config/*_node.yaml` with your model checkpoint.
+
 - **trav_prediction_node.yaml**
 - **trav_mapping_node.yaml**
+
 > **Note:** See [#model-zoo](#model-zoo) for our pre-trained checkpoints.
 
 #### Launch ROS node
+
 We provide two options for traversability estimation:
 
 <div align="center">
@@ -219,17 +249,21 @@ We provide two options for traversability estimation:
 </div>
 
 **How to run:**
+
 1. For traversability prediction:
+
    ```bash
    roslaunch lesta traversability_prediction.launch
    ```
 
 2. For traversability mapping:
+
    ```bash
    roslaunch lesta traversability_mapping.launch
    ```
 
 #### Test the node with rosbag
+
 ```bash
 rosbag play {your-rosbag}.bag --clock -r 2
 ```
@@ -246,9 +280,9 @@ We release the public dataset used in our paper:
 
 Sample rosbags configured to run with the default settings:
 
-  - **Campus road** [[Google Drive](https://drive.google.com/drive/folders/1C_jPeGpr_7867v7znTjca3hy4acE0uBJ?usp=drive_link)]
+- **Campus road** [[Google Drive](https://drive.google.com/drive/folders/1C_jPeGpr_7867v7znTjca3hy4acE0uBJ?usp=drive_link)]
 
-  - **Parking lot** [[Google Drive](https://drive.google.com/drive/folders/1C_jPeGpr_7867v7znTjca3hy4acE0uBJ?usp=drive_link)]
+- **Parking lot** [[Google Drive](https://drive.google.com/drive/folders/1C_jPeGpr_7867v7znTjca3hy4acE0uBJ?usp=drive_link)]
 
 ## Model Zoo
 
@@ -299,6 +333,7 @@ Sample rosbags configured to run with the default settings:
 ---
 
 ## Known Issues
+
 - **Artifacts from dynamic objects**:
   - We currently implemented a raycasting-based approach to remove artifacts from dynamic objects.
   - This is crucial for accurate static terrain representation, which directly impacts prediction quality.
@@ -311,7 +346,6 @@ Sample rosbags configured to run with the default settings:
   - A good SLAM / 3d pose estimation is required to get a good height map.
   - In typical settings, [FAST-LIO2](https://github.com/hku-mars/FAST_LIO), [LIO-SAM](https://github.com/TixiaoShan/LIO-SAM), or [CT-ICP](https://github.com/jedeschaud/ct_icp) are good starting points.
   - We are working on improving the height mapping accuracy.
-
 
 ---
 

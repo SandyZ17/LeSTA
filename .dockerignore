@@ -1,0 +1,13 @@
+.git
+.vscode
+build
+devel
+install
+log
+*.bag
+*.pcd
+*.pt
+*.pth
+*.pyc
+__pycache__
+*.egg-info

@@ -1,0 +1,20 @@
+services:
+  lesta:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: lesta:cuda12.9
+    container_name: lesta
+    working_dir: /workspace/lesta_ws
+    stdin_open: true
+    tty: true
+    shm_size: "8gb"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics
+      DISPLAY: ${DISPLAY:-:0}
+    gpus: all
+    volumes:
+      - ./:/workspace/lesta_ws/src/LeSTA
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    command: /bin/bash
