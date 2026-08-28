@@ -19,9 +19,27 @@ From this directory, download the small parking-lot sequence first:
 python3 download_urban_traversability.py --sequence parking_lot
 ```
 
-The script uses the official Google Drive folder and requires `gdown`. Use
-`--sequence campus_full` only after the preprocessing pipeline is verified;
-the full sequence is much larger.
+The script uses the official Google Drive file ID and requires `gdown`.
+Additional sequences can be added to the script after their official file IDs
+have been verified; do not download the full campus sequence before the
+pipeline is validated.
+
+## ROS 1 packet decoding
+
+Build the isolated decoder image from this directory:
+
+```bash
+docker build -f ros1/Dockerfile -t lesta-ros1-decoder:latest .
+docker run --rm --name lesta-ros1-extract \
+  -v "$PWD/datasets/urban_traversability/raw":/data:ro \
+  -v "$PWD/datasets/urban_traversability/frames":/output \
+  lesta-ros1-decoder:latest \
+  /workspace/data_preprocessing/ros1/extract_frames.sh \
+  /data/parking_lot_traversability_01-2.bag /output/parking_lot 1
+```
+
+The current parking-lot extraction produces 9,177 timestamped binary PCD
+frames and a matching `manifest.csv`. Generated data is ignored by Git.
 
 ## Planned conversion
 
