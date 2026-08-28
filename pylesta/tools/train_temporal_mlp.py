@@ -30,6 +30,22 @@ class TemporalMLP(nn.Module):
         return self.head(pooled).squeeze(1)
 
 
+def ranking_metrics(scores, labels):
+    """Compute AUROC and average precision without an sklearn dependency."""
+    positive = labels == 1
+    negative = labels == -1
+    order = np.argsort(-scores, kind="stable")
+    ranked_labels = positive[order].astype(np.float64)
+    cumulative = np.cumsum(ranked_labels)
+    positives = max(float(positive.sum()), 1.0)
+    negatives = max(float(negative.sum()), 1.0)
+    auc = float(((cumulative - ranked_labels) * negative[order]).sum() /
+                (positives * negatives))
+    precision = cumulative / np.arange(1, len(scores) + 1)
+    ap = float((precision * ranked_labels).sum() / positives)
+    return auc, ap
+
+
 def pu_loss(logits, labels, positive_prior: float):
     positive = labels == 1
     unknown = labels == -1
@@ -54,7 +70,9 @@ def evaluate(model, loader, device, positive_prior):
     labels = np.asarray(labels)
     logits = torch.logit(torch.from_numpy(scores).clamp(1e-6, 1 - 1e-6))
     loss = float(pu_loss(logits, torch.from_numpy(labels), positive_prior).detach())
-    return loss, float(scores[labels == 1].mean()), float(scores[labels == -1].mean())
+    auc, ap = ranking_metrics(scores, labels)
+    return (loss, float(scores[labels == 1].mean()),
+            float(scores[labels == -1].mean()), auc, ap)
 
 
 def main(args):
@@ -62,6 +80,16 @@ def main(args):
     data = np.load(args.windows, allow_pickle=False)
     features = data["features"].astype(np.float32)
     labels = data["labels"].astype(np.int64)
+    feature_names = data["feature_names"].tolist()
+    if args.feature_mode == "terrain":
+        keep = [feature_names.index(name) for name in ("step", "slope", "roughness", "curvature")]
+        features = features[:, :, keep]
+        feature_names = [feature_names[index] for index in keep]
+    elif args.feature_mode == "motion":
+        keep = [index for index, name in enumerate(feature_names)
+                if name not in ("step", "slope", "roughness", "curvature")]
+        features = features[:, :, keep]
+        feature_names = [feature_names[index] for index in keep]
     split = int(len(features) * args.train_ratio)
     train_x, val_x = features[:split], features[split:]
     train_y, val_y = labels[:split], labels[split:]
@@ -93,15 +121,16 @@ def main(args):
             loss.backward()
             optimizer.step()
             train_losses.append(float(loss.detach()))
-        val_loss, pos_score, unknown_score = evaluate(model, val, device, args.positive_prior)
+        val_loss, pos_score, unknown_score, auc, ap = evaluate(
+            model, val, device, args.positive_prior)
         print(f"epoch={epoch:02d} train_pu_loss={np.mean(train_losses):.5f} "
               f"val_pu_loss={val_loss:.5f} positive_score={pos_score:.4f} "
-              f"unknown_score={unknown_score:.4f}")
+              f"unknown_score={unknown_score:.4f} auroc={auc:.4f} ap={ap:.4f}")
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"model": model.state_dict(), "mean": mean, "std": std,
-                "feature_names": data["feature_names"].tolist()}, output)
+                "feature_names": feature_names, "feature_mode": args.feature_mode}, output)
     print(f"Saved checkpoint: {output}")
 
 
@@ -117,5 +146,6 @@ if __name__ == "__main__":
     parser.add_argument("--train-ratio", type=float, default=0.8)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
+    parser.add_argument("--feature-mode", choices=("all", "terrain", "motion"), default="all")
     args = parser.parse_args()
     main(args)

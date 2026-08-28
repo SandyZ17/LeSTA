@@ -114,6 +114,12 @@ docker compose --profile training run --rm temporal-train
 The service passes through all NVIDIA GPUs and the script fails explicitly if
 CUDA is not visible. Verify that NVIDIA Container Toolkit is installed.
 
+The training script also supports input ablations. Use `--feature-mode terrain`
+to keep only the four terrain features, or `--feature-mode motion` to keep
+speed, yaw rate, IMU, and time interval. It reports AUROC and average
+precision, but these metrics evaluate the motion-derived proxy labels rather
+than independently verified traversability labels.
+
 ## Planned conversion
 
 The next preprocessing step will convert ROS 1 Velodyne packets into ordered
