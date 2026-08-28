@@ -41,6 +41,24 @@ docker run --rm --name lesta-ros1-extract \
 The current parking-lot extraction produces 9,177 timestamped binary PCD
 frames and a matching `manifest.csv`. Generated data is ignored by Git.
 
+Extract auxiliary data from the same bag after the PCD extraction:
+
+```bash
+docker run --rm --entrypoint /bin/bash \
+  -v "$PWD/datasets/urban_traversability/raw":/data:ro \
+  -v "$PWD/datasets/urban_traversability/frames":/output \
+  lesta-ros1-decoder:latest -lc \
+  'source /opt/ros/noetic/setup.bash && python3 \
+   /workspace/data_preprocessing/ros1/extract_auxiliary_data.py \
+   /data/parking_lot_traversability_01-2.bag /output/parking_lot'
+```
+
+This writes `imu.csv`, `odometry_wheel.csv`, `cmd_vel.csv`, `tf.csv`,
+`tf_static.csv`, and `aligned.csv` beside the PCD frames. `aligned.csv`
+contains the nearest IMU and odometry timestamps for each LiDAR frame; the
+maximum allowed timestamp skew will be enforced in the temporal dataset
+builder.
+
 ## Planned conversion
 
 The next preprocessing step will convert ROS 1 Velodyne packets into ordered
