@@ -59,6 +59,20 @@ contains nearest IMU values and interpolated odometry values for each LiDAR
 frame. PCHIP is used for speed and yaw rate, linear interpolation for position,
 and odometry gaps over 200 ms are marked invalid.
 
+## Temporal windows
+
+Build the first 10-frame temporal sample set from the aligned data:
+
+```bash
+python3 build_temporal_windows.py \
+  --frame-dir datasets/urban_traversability/frames/parking_lot \
+  --window-size 10 --stride 1
+```
+
+The generated `temporal/temporal_windows.npz` contains speed, yaw rate, IMU
+features, frame intervals, and PCD filenames. It is an intermediate dataset;
+terrain features and traversability labels will be added before training.
+
 ## Planned conversion
 
 The next preprocessing step will convert ROS 1 Velodyne packets into ordered

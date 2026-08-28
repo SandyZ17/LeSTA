@@ -21,5 +21,6 @@ libs/
 # Ignore model files
 *.pth
 *.pt
+*.npz
 
 log/
