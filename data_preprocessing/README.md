@@ -107,6 +107,10 @@ python3 pylesta/tools/train_temporal_mlp.py \
 The experiment uses chronological train/validation splitting and PU loss;
 `-1` labels are treated as unknown rather than as negative terrain labels.
 
+For cross-sequence evaluation, pass two files to `--windows` and one complete
+held-out sequence to `--val-windows`. This is the required evaluation mode
+once multiple driving sequences are available.
+
 For the required GPU run, use the CUDA-enabled Compose profile:
 
 ```bash

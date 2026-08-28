@@ -77,10 +77,19 @@ def evaluate(model, loader, device, positive_prior):
 
 def main(args):
     torch.manual_seed(args.seed)
-    data = np.load(args.windows, allow_pickle=False)
-    features = data["features"].astype(np.float32)
-    labels = data["labels"].astype(np.int64)
-    feature_names = data["feature_names"].tolist()
+    train_paths = args.windows
+    val_paths = args.val_windows
+
+    def load(paths):
+        arrays = [np.load(path, allow_pickle=False) for path in paths]
+        features = np.concatenate([data["features"] for data in arrays]).astype(np.float32)
+        labels = np.concatenate([data["labels"] for data in arrays]).astype(np.int64)
+        names = arrays[0]["feature_names"].tolist()
+        if any(data["feature_names"].tolist() != names for data in arrays):
+            raise ValueError("all window files must have identical feature names")
+        return features, labels, names
+
+    features, labels, feature_names = load(train_paths)
     terrain_names = ("step", "slope", "roughness", "curvature", "height_range",
                      "elevation_iqr", "roughness_p95", "occupied_cell_ratio")
     if args.feature_mode == "terrain":
@@ -92,9 +101,15 @@ def main(args):
                 if name not in terrain_names]
         features = features[:, :, keep]
         feature_names = [feature_names[index] for index in keep]
-    split = int(len(features) * args.train_ratio)
-    train_x, val_x = features[:split], features[split:]
-    train_y, val_y = labels[:split], labels[split:]
+    if val_paths:
+        val_x, val_y, val_names = load(val_paths)
+        if val_names != feature_names:
+            raise ValueError("training and validation feature names differ")
+        train_x, train_y = features, labels
+    else:
+        split = int(len(features) * args.train_ratio)
+        train_x, val_x = features[:split], features[split:]
+        train_y, val_y = labels[:split], labels[split:]
     mean = train_x.reshape(-1, train_x.shape[-1]).mean(axis=0)
     std = train_x.reshape(-1, train_x.shape[-1]).std(axis=0)
     std[std < 1e-6] = 1.0
@@ -138,7 +153,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--windows", type=Path, required=True)
+    parser.add_argument("--windows", type=Path, nargs="+", required=True)
+    parser.add_argument("--val-windows", type=Path, nargs="*", default=None)
     parser.add_argument("--output", type=Path, default=Path("logs/temporal_mlp.pt"))
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=128)

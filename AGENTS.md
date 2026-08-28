@@ -55,6 +55,13 @@ features for model selection: the labels are still motion-derived and the
 new risk quantities are also proxies. Preserve this ablation when adding
 real failure, slip, emergency-stop, or path-deviation events.
 
+The first leave-one-sequence-out evaluation used two rampway sequences for
+training and one for validation. Best validation scores were AUROC/AP
+0.7093/0.7347 on `rampway3`, 0.7566/0.6001 on `rampway2`, and 0.8613/0.6508
+on `rampway1`. The large variation confirms that the earlier single-sequence
+scores overstate generalization. Keep sequence-level splits for future model
+comparisons and report per-sequence results, not only an aggregate average.
+
 ## Build, Test, and Development Commands
 
 From the workspace root (or inside the provided Docker container):
