@@ -120,10 +120,12 @@ def extract(bag_path, output_dir):
     with open(manifest_path, newline="") as stream:
         for row in csv.DictReader(stream):
             lidar_stamp = int(row["stamp_ns"])
-            imu_row = nearest(imu, imu_times, lidar_stamp)
-            odom_row = nearest(odom, odom_times, lidar_stamp)
+            imu_row = latest_past(imu, imu_times, lidar_stamp)
+            odom_row = latest_past(odom, odom_times, lidar_stamp)
             odom_interp = interpolate_odom(odom_array, odom_pchip, yaw_rate_pchip, lidar_stamp)
-            imu_skew_ms = "" if imu_row is None else abs(lidar_stamp - imu_row[0]) / 1e6
+            odom_causal = causal_odom(odom_array, lidar_stamp)
+            imu_age_ms = "" if imu_row is None else (lidar_stamp - imu_row[0]) / 1e6
+            odom_age_ms = "" if odom_causal is None else (lidar_stamp - odom_causal[0]) / 1e6
             aligned.append([
                 row["frame_index"], lidar_stamp, row["pcd_file"],
                 nearest_value(imu_row),
@@ -133,14 +135,19 @@ def extract(bag_path, output_dir):
                 "" if odom_interp is None else "%.9f" % odom_interp[2],
                 "" if odom_interp is None else "%.9f" % odom_interp[3],
                 "" if odom_interp is None else "%.9f" % odom_interp[4],
-                "" if imu_skew_ms == "" else "%.6f" % imu_skew_ms,
+                "" if imu_age_ms == "" else "%.6f" % imu_age_ms,
                 int(odom_interp is not None),
+                "" if odom_causal is None else "%.9f" % odom_causal[4],
+                "" if odom_causal is None else "%.9f" % odom_causal[9],
+                "" if odom_age_ms == "" else "%.6f" % odom_age_ms,
+                int(odom_causal is not None),
             ])
     write_csv(os.path.join(output_dir, "aligned.csv"), [
         "frame_index", "lidar_stamp_ns", "pcd_file", "imu_stamp_ns",
-        "odom_nearest_stamp_ns", "pose_x_interp", "pose_y_interp",
+        "odom_causal_stamp_ns", "pose_x_interp", "pose_y_interp",
         "pose_z_interp", "linear_x_pchip", "angular_z_pchip",
-        "imu_nearest_skew_ms", "odom_interp_valid",
+        "imu_causal_age_ms", "odom_interp_valid", "linear_x_causal",
+        "angular_z_causal", "odom_causal_age_ms", "odom_causal_valid",
     ], aligned)
 
     print("Extracted IMU: %d, wheel odometry: %d, TF: %d, TF static: %d, cmd_vel: %d" %
@@ -162,6 +169,21 @@ def nearest(rows, times, target):
 
 def nearest_value(row):
     return "" if row is None else row[0]
+
+
+def latest_past(rows, times, target):
+    """Return only the latest sample at or before target."""
+    index = bisect.bisect_right(times, target) - 1
+    return None if index < 0 else rows[index]
+
+
+def causal_odom(odom_array, target_ns, max_age_ns=200_000_000):
+    """Return the latest odometry sample without reading future data."""
+    times = odom_array[:, 0].astype(np.int64)
+    index = np.searchsorted(times, target_ns, side="right") - 1
+    if index < 0 or target_ns - times[index] > max_age_ns:
+        return None
+    return odom_array[index]
 
 
 def interpolate_odom(odom_array, speed_pchip, yaw_rate_pchip, target_ns,

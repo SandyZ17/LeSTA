@@ -55,9 +55,12 @@ docker run --rm --entrypoint /bin/bash \
 
 This writes `imu.csv`, `odometry_wheel.csv`, `cmd_vel.csv`, `tf.csv`,
 `tf_static.csv`, and `aligned.csv` beside the PCD frames. `aligned.csv`
-contains nearest IMU values and interpolated odometry values for each LiDAR
-frame. PCHIP is used for speed and yaw rate, linear interpolation for position,
-and odometry gaps over 200 ms are marked invalid.
+keeps PCHIP-interpolated pose/speed fields for offline future-motion label
+generation, but temporal model inputs use `linear_x_causal` and
+`angular_z_causal`, which only read samples at or before each LiDAR timestamp.
+It also contains causal IMU values and the sensor ages for each LiDAR frame.
+PCHIP remains available for offline label generation; odometry gaps over
+200 ms are marked invalid for model inputs.
 
 ## Terrain features and temporal windows
 

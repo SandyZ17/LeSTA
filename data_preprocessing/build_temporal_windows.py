@@ -11,7 +11,7 @@ import numpy as np
 
 
 FEATURE_NAMES = (
-    "linear_x_pchip", "angular_z_pchip", "accel_x", "accel_y", "accel_z",
+    "linear_x_causal", "angular_z_causal", "accel_x", "accel_y", "accel_z",
     "gyro_x", "gyro_y", "gyro_z", "delta_t",
 )
 RISK_FEATURE_NAMES = (
@@ -33,13 +33,10 @@ def load_rows(frame_dir: Path):
 
 
 def nearest_imu(imu_rows, imu_times, stamp_ns):
-    index = int(np.searchsorted(imu_times, stamp_ns, side="left"))
-    candidates = []
-    if index < len(imu_rows):
-        candidates.append(imu_rows[index])
-    if index > 0:
-        candidates.append(imu_rows[index - 1])
-    return min(candidates, key=lambda row: abs(int(row["stamp_ns"]) - stamp_ns))
+    index = int(np.searchsorted(imu_times, stamp_ns, side="right")) - 1
+    if index < 0:
+        return None
+    return imu_rows[index]
 
 
 def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float):
@@ -61,24 +58,26 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
     for index, row in enumerate(aligned):
         stamp_ns = int(row["lidar_stamp_ns"])
         imu = nearest_imu(imu_rows, imu_times, stamp_ns)
-        imu_skew_ms = abs(int(imu["stamp_ns"]) - stamp_ns) / 1e6
-        is_valid = row["odom_interp_valid"] == "1" and imu_skew_ms <= max_imu_skew_ms
+        if imu is None:
+            raise ValueError("no causal IMU sample available for LiDAR frame")
+        imu_skew_ms = (stamp_ns - int(imu["stamp_ns"])) / 1e6
+        is_valid = row["odom_causal_valid"] == "1" and imu_skew_ms <= max_imu_skew_ms
         previous_stamp = int(aligned[index - 1]["lidar_stamp_ns"]) if index else stamp_ns
         delta_t = (stamp_ns - previous_stamp) / 1e9
-        speed = float(row["linear_x_pchip"]) if row["linear_x_pchip"] else np.nan
+        speed = float(row["linear_x_causal"]) if row["linear_x_causal"] else np.nan
         accel = np.asarray([float(imu["accel_x"]), float(imu["accel_y"]),
                             float(imu["accel_z"])])
         gyro = np.asarray([float(imu["gyro_x"]), float(imu["gyro_y"]),
                            float(imu["gyro_z"])])
         current_features = [
-            float(row["linear_x_pchip"]) if row["linear_x_pchip"] else np.nan,
-            float(row["angular_z_pchip"]) if row["angular_z_pchip"] else np.nan,
+            speed,
+            float(row["angular_z_causal"]) if row["angular_z_causal"] else np.nan,
             float(imu["accel_x"]), float(imu["accel_y"]), float(imu["accel_z"]),
             float(imu["gyro_x"]), float(imu["gyro_y"]), float(imu["gyro_z"]),
             delta_t,
-            (speed - float(aligned[index - 1]["linear_x_pchip"])) / delta_t
-            if index and delta_t > 1e-6 and aligned[index - 1]["linear_x_pchip"] else np.nan,
-            speed * float(row["angular_z_pchip"]) if row["angular_z_pchip"] else np.nan,
+            (speed - float(aligned[index - 1]["linear_x_causal"])) / delta_t
+            if index and delta_t > 1e-6 and aligned[index - 1]["linear_x_causal"] else np.nan,
+            speed * float(row["angular_z_causal"]) if row["angular_z_causal"] else np.nan,
             float(np.linalg.norm(accel)), float(np.linalg.norm(gyro)),
             *[float(terrain_rows[index][name]) for name in terrain_feature_names],
         ]

@@ -71,6 +71,15 @@ AUROC/AP 0.5621/0.6027 (`rampway3`), 0.8601/0.7659 (`rampway2`), and
 are diagnostic proxy-label results; rerun all-feature comparisons after this
 fix before selecting a model.
 
+The causal-alignment fix keeps future PCHIP fields only for offline label
+generation. Model windows now use the latest IMU and odometry samples at or
+before each LiDAR timestamp, reject odometry older than 200 ms, and record
+sensor age. After regeneration, the three rampway sets contain 2,658, 879,
+and 1,593 valid ten-frame windows respectively; all 21 features are finite
+and no aligned sensor timestamp is later than its LiDAR timestamp. Re-run the
+cross-sequence model comparison with these causal windows before interpreting
+performance.
+
 After regenerating the corrected features, the all-feature leave-one-sequence-
 out rerun achieved AUROC/AP 0.6246/0.6677 (`rampway3`), 0.5947/0.4560
 (`rampway2`), and 0.8596/0.6525 (`rampway1`). The mean AUROC/AP is 0.6930/
