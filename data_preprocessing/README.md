@@ -90,9 +90,11 @@ python3 build_temporal_windows.py \
   --window-size 10 --stride 1
 ```
 
-The generated `temporal/temporal_windows.npz` contains 13 features per frame
+The generated `temporal/temporal_windows.npz` contains 21 features per frame
 and a target `labels` array. Features include speed, yaw rate, IMU, frame
-interval, `step`, `slope`, `roughness`, and `curvature`.
+interval, derived longitudinal/lateral acceleration, acceleration and gyro
+norms, and eight terrain features including `step`, `slope`, `roughness`, and
+`curvature`.
 
 Run the lightweight initial Temporal MLP experiment from the repository root:
 

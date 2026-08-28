@@ -14,7 +14,9 @@ FEATURE_NAMES = (
     "linear_x_pchip", "angular_z_pchip", "accel_x", "accel_y", "accel_z",
     "gyro_x", "gyro_y", "gyro_z", "delta_t",
 )
-TERRAIN_FEATURE_NAMES = ("step", "slope", "roughness", "curvature")
+RISK_FEATURE_NAMES = (
+    "longitudinal_accel", "lateral_accel", "accel_norm", "gyro_norm",
+)
 
 
 def load_rows(frame_dir: Path):
@@ -52,6 +54,8 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
         raise ValueError("terrain_features.csv must contain one row per aligned frame")
     if len(label_rows) != len(aligned):
         raise ValueError("traversability_labels.csv must contain one row per aligned frame")
+    terrain_feature_names = tuple(name for name in terrain_rows[0]
+                                  if name not in ("frame_index", "pcd_file"))
     frame_features = []
     valid = []
     for index, row in enumerate(aligned):
@@ -60,15 +64,26 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
         imu_skew_ms = abs(int(imu["stamp_ns"]) - stamp_ns) / 1e6
         is_valid = row["odom_interp_valid"] == "1" and imu_skew_ms <= max_imu_skew_ms
         previous_stamp = int(aligned[index - 1]["lidar_stamp_ns"]) if index else stamp_ns
-        frame_features.append([
+        delta_t = (stamp_ns - previous_stamp) / 1e9
+        speed = float(row["linear_x_pchip"]) if row["linear_x_pchip"] else np.nan
+        accel = np.asarray([float(imu["accel_x"]), float(imu["accel_y"]),
+                            float(imu["accel_z"])])
+        gyro = np.asarray([float(imu["gyro_x"]), float(imu["gyro_y"]),
+                           float(imu["gyro_z"])])
+        current_features = [
             float(row["linear_x_pchip"]) if row["linear_x_pchip"] else np.nan,
             float(row["angular_z_pchip"]) if row["angular_z_pchip"] else np.nan,
             float(imu["accel_x"]), float(imu["accel_y"]), float(imu["accel_z"]),
             float(imu["gyro_x"]), float(imu["gyro_y"]), float(imu["gyro_z"]),
-            (stamp_ns - previous_stamp) / 1e9,
-            *[float(terrain_rows[index][name]) for name in TERRAIN_FEATURE_NAMES],
-        ])
-        valid.append(is_valid)
+            delta_t,
+            (speed - float(aligned[index - 1]["linear_x_pchip"])) / delta_t
+            if index and delta_t > 1e-6 and aligned[index - 1]["linear_x_pchip"] else np.nan,
+            speed * float(row["angular_z_pchip"]) if row["angular_z_pchip"] else np.nan,
+            float(np.linalg.norm(accel)), float(np.linalg.norm(gyro)),
+            *[float(terrain_rows[index][name]) for name in terrain_feature_names],
+        ]
+        frame_features.append(current_features)
+        valid.append(is_valid and np.isfinite(current_features).all())
 
     frame_features = np.asarray(frame_features, dtype=np.float32)
     valid = np.asarray(valid, dtype=bool)
@@ -93,7 +108,7 @@ def build(frame_dir: Path, window_size: int, stride: int, max_imu_skew_ms: float
         frame_indices=frame_indices,
         pcd_files=pcd_files,
         labels=labels,
-        feature_names=np.asarray(FEATURE_NAMES + TERRAIN_FEATURE_NAMES),
+        feature_names=np.asarray(FEATURE_NAMES + RISK_FEATURE_NAMES + terrain_feature_names),
         window_size=window_size,
     )
 

@@ -10,7 +10,11 @@ from pathlib import Path
 import numpy as np
 
 
-FEATURE_NAMES = ("step", "slope", "roughness", "curvature")
+FEATURE_NAMES = (
+    "step", "slope", "roughness", "curvature", "height_range",
+    "elevation_iqr", "roughness_p95", "occupied_cell_ratio",
+)
+INVALID_FEATURES = (np.nan,) * len(FEATURE_NAMES)
 
 
 def read_binary_pcd(path: Path) -> np.ndarray:
@@ -32,7 +36,7 @@ def terrain_features(points: np.ndarray, cell_size: float, x_min: float,
         (np.abs(points[:, 1]) <= y_abs_max) & np.isfinite(points).all(axis=1)
     ]
     if len(roi) < 20:
-        return (np.nan, np.nan, np.nan, np.nan)
+        return INVALID_FEATURES
 
     # Mean elevation per XY cell is computed with bincount for fast batch
     # preprocessing. The ROI and cell aggregation suppress isolated returns.
@@ -41,14 +45,16 @@ def terrain_features(points: np.ndarray, cell_size: float, x_min: float,
     elevations = (np.bincount(inverse, weights=roi[:, 2]) /
                   np.bincount(inverse)).astype(np.float32)
     if len(elevations) < 6:
-        return (np.nan, np.nan, np.nan, np.nan)
+        return INVALID_FEATURES
 
     xy = unique.astype(np.float64) * cell_size
     design = np.column_stack((xy[:, 0], xy[:, 1], np.ones(len(xy))))
     coefficients, _, _, _ = np.linalg.lstsq(design, elevations, rcond=None)
     residuals = elevations - design @ coefficients
     slope = float(np.arctan(np.hypot(coefficients[0], coefficients[1])))
+    absolute_residuals = np.abs(residuals)
     roughness = float(np.sqrt(np.mean(residuals ** 2)))
+    roughness_p95 = float(np.percentile(absolute_residuals, 95))
     centered = np.column_stack((xy, elevations)) - np.mean(
         np.column_stack((xy, elevations)), axis=0)
     eigenvalues = np.linalg.eigvalsh(np.cov(centered, rowvar=False))
@@ -68,7 +74,13 @@ def terrain_features(points: np.ndarray, cell_size: float, x_min: float,
     all_jumps = np.concatenate((jumps_x.ravel(), jumps_y.ravel()))
     finite_jumps = all_jumps[np.isfinite(all_jumps)]
     step = float(finite_jumps.max()) if finite_jumps.size else 0.0
-    return step, slope, roughness, curvature
+    height_range = float(np.percentile(elevations, 95) -
+                         np.percentile(elevations, 5))
+    elevation_iqr = float(np.percentile(elevations, 75) -
+                          np.percentile(elevations, 25))
+    occupied_cell_ratio = float(len(elevations) / (grid_x * grid_y))
+    return (step, slope, roughness, curvature, height_range, elevation_iqr,
+            roughness_p95, occupied_cell_ratio)
 
 
 def build(frame_dir: Path, cell_size: float, x_min: float, x_max: float,

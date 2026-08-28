@@ -46,6 +46,15 @@ observable failure or risk signals, and repeat the comparison with sequence-
 level splits and a static LeSTA baseline. Record AUROC, AP, calibration,
 latency, dropped frames, and downstream planning/vehicle-stability metrics.
 
+The enhanced 21-feature rerun added four derived motion-risk features
+(`longitudinal_accel`, `lateral_accel`, `accel_norm`, `gyro_norm`) and four
+additional terrain summaries. With the same 30-epoch CUDA experiment, the
+best validation AUROC was 0.8330 for all features, 0.5828 for terrain-only,
+and 0.8700 for motion-only. The result does not yet support using the terrain
+features for model selection: the labels are still motion-derived and the
+new risk quantities are also proxies. Preserve this ablation when adding
+real failure, slip, emergency-stop, or path-deviation events.
+
 ## Build, Test, and Development Commands
 
 From the workspace root (or inside the provided Docker container):

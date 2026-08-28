@@ -81,13 +81,15 @@ def main(args):
     features = data["features"].astype(np.float32)
     labels = data["labels"].astype(np.int64)
     feature_names = data["feature_names"].tolist()
+    terrain_names = ("step", "slope", "roughness", "curvature", "height_range",
+                     "elevation_iqr", "roughness_p95", "occupied_cell_ratio")
     if args.feature_mode == "terrain":
-        keep = [feature_names.index(name) for name in ("step", "slope", "roughness", "curvature")]
+        keep = [feature_names.index(name) for name in terrain_names]
         features = features[:, :, keep]
         feature_names = [feature_names[index] for index in keep]
     elif args.feature_mode == "motion":
         keep = [index for index, name in enumerate(feature_names)
-                if name not in ("step", "slope", "roughness", "curvature")]
+                if name not in terrain_names]
         features = features[:, :, keep]
         feature_names = [feature_names[index] for index in keep]
     split = int(len(features) * args.train_ratio)
