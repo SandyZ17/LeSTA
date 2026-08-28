@@ -61,8 +61,13 @@ def extract(bag_path, output_dir):
             elif topic in ("/tf", "/tf_static"):
                 target = tf_static if topic == "/tf_static" else tf
                 for transform in message.transforms:
+                    transform_stamp = (
+                        transform.header.stamp.to_nsec()
+                        if transform.header.stamp
+                        else bag_time.to_nsec()
+                    )
                     target.append([
-                        timestamp, transform.header.frame_id,
+                        transform_stamp, transform.header.frame_id,
                         transform.child_frame_id,
                         transform.transform.translation.x,
                         transform.transform.translation.y,
