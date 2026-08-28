@@ -22,5 +22,6 @@ libs/
 *.pth
 *.pt
 *.npz
+*.part
 
 log/
