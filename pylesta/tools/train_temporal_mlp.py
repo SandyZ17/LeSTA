@@ -90,17 +90,6 @@ def main(args):
         return features, labels, names
 
     features, labels, feature_names = load(train_paths)
-    terrain_names = ("step", "slope", "roughness", "curvature", "height_range",
-                     "elevation_iqr", "roughness_p95", "occupied_cell_ratio")
-    if args.feature_mode == "terrain":
-        keep = [feature_names.index(name) for name in terrain_names]
-        features = features[:, :, keep]
-        feature_names = [feature_names[index] for index in keep]
-    elif args.feature_mode == "motion":
-        keep = [index for index, name in enumerate(feature_names)
-                if name not in terrain_names]
-        features = features[:, :, keep]
-        feature_names = [feature_names[index] for index in keep]
     if val_paths:
         val_x, val_y, val_names = load(val_paths)
         if val_names != feature_names:
@@ -110,6 +99,17 @@ def main(args):
         split = int(len(features) * args.train_ratio)
         train_x, val_x = features[:split], features[split:]
         train_y, val_y = labels[:split], labels[split:]
+    terrain_names = ("step", "slope", "roughness", "curvature", "height_range",
+                     "elevation_iqr", "roughness_p95", "occupied_cell_ratio")
+    if args.feature_mode == "terrain":
+        keep = [feature_names.index(name) for name in terrain_names]
+    elif args.feature_mode == "motion":
+        keep = [index for index, name in enumerate(feature_names)
+                if name not in terrain_names]
+    else:
+        keep = list(range(len(feature_names)))
+    train_x, val_x = train_x[:, :, keep], val_x[:, :, keep]
+    feature_names = [feature_names[index] for index in keep]
     mean = train_x.reshape(-1, train_x.shape[-1]).mean(axis=0)
     std = train_x.reshape(-1, train_x.shape[-1]).std(axis=0)
     std[std < 1e-6] = 1.0
@@ -124,7 +124,7 @@ def main(args):
                        batch_size=args.batch_size, shuffle=True, **loader_kwargs)
     val = DataLoader(TensorDataset(torch.from_numpy(val_x), torch.from_numpy(val_y)),
                      batch_size=args.batch_size, **loader_kwargs)
-    model = TemporalMLP(features.shape[-1], args.hidden_dim).to(device)
+    model = TemporalMLP(train_x.shape[-1], args.hidden_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     for epoch in range(1, args.epochs + 1):
         model.train()

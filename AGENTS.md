@@ -62,6 +62,22 @@ on `rampway1`. The large variation confirms that the earlier single-sequence
 scores overstate generalization. Keep sequence-level splits for future model
 comparisons and report per-sequence results, not only an aggregate average.
 
+During the corrected terrain-feature evaluation, `step` was initially zero
+for every frame because integer grid indices were divided by `cell_size` a
+second time. The index conversion is now fixed and all three rampway
+sequences were regenerated. Terrain-only leave-one-sequence-out results are
+AUROC/AP 0.5621/0.6027 (`rampway3`), 0.8601/0.7659 (`rampway2`), and
+0.6758/0.5460 (`rampway1`), showing substantial sequence sensitivity. These
+are diagnostic proxy-label results; rerun all-feature comparisons after this
+fix before selecting a model.
+
+After regenerating the corrected features, the all-feature leave-one-sequence-
+out rerun achieved AUROC/AP 0.6246/0.6677 (`rampway3`), 0.5947/0.4560
+(`rampway2`), and 0.8596/0.6525 (`rampway1`). The mean AUROC/AP is 0.6930/
+0.5921, with strong split dependence. These results do not establish robust
+cross-environment traversability prediction; they motivate better labels,
+sequence balancing, and evaluation against independently observed failures.
+
 ## Build, Test, and Development Commands
 
 From the workspace root (or inside the provided Docker container):

@@ -65,8 +65,10 @@ def terrain_features(points: np.ndarray, cell_size: float, x_min: float,
     grid_x = int(np.ceil((x_max - x_min) / cell_size)) + 2
     grid_y = int(np.ceil(2 * y_abs_max / cell_size)) + 2
     dense = np.full((grid_x, grid_y), np.nan, dtype=np.float32)
-    ix = np.floor((unique[:, 0] - x_min) / cell_size).astype(int)
-    iy = np.floor((unique[:, 1] + y_abs_max) / cell_size).astype(int)
+    # `unique` already contains integer cell indices; do not divide them by
+    # cell_size a second time when mapping them into the dense ROI grid.
+    ix = unique[:, 0] - int(np.floor(x_min / cell_size))
+    iy = unique[:, 1] - int(np.floor(-y_abs_max / cell_size))
     inside = (ix >= 0) & (ix < grid_x) & (iy >= 0) & (iy < grid_y)
     dense[ix[inside], iy[inside]] = elevations[inside]
     jumps_x = np.abs(dense[1:, :] - dense[:-1, :])
