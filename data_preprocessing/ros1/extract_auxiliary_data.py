@@ -6,7 +6,9 @@ import csv
 import os
 import sys
 
+import numpy as np
 import rosbag
+from scipy.interpolate import PchipInterpolator
 
 
 def stamp_ns(message, bag_time):
@@ -109,20 +111,36 @@ def extract(bag_path, output_dir):
     odom.sort(key=lambda row: row[0])
     imu_times = [row[0] for row in imu]
     odom_times = [row[0] for row in odom]
+    odom_array = np.asarray(odom, dtype=float)
+    odom_unique_times, odom_unique_indices = np.unique(odom_array[:, 0], return_index=True)
+    odom_array = odom_array[odom_unique_indices]
+    odom_pchip = PchipInterpolator(odom_unique_times, odom_array[:, 4], extrapolate=False)
+    yaw_rate_pchip = PchipInterpolator(odom_unique_times, odom_array[:, 9], extrapolate=False)
     aligned = []
     with open(manifest_path, newline="") as stream:
         for row in csv.DictReader(stream):
             lidar_stamp = int(row["stamp_ns"])
             imu_row = nearest(imu, imu_times, lidar_stamp)
             odom_row = nearest(odom, odom_times, lidar_stamp)
+            odom_interp = interpolate_odom(odom_array, odom_pchip, yaw_rate_pchip, lidar_stamp)
+            imu_skew_ms = "" if imu_row is None else abs(lidar_stamp - imu_row[0]) / 1e6
             aligned.append([
                 row["frame_index"], lidar_stamp, row["pcd_file"],
-                nearest_value(imu_row, imu_times, lidar_stamp),
-                nearest_value(odom_row, odom_times, lidar_stamp),
+                nearest_value(imu_row),
+                "" if odom_row is None else odom_row[0],
+                "" if odom_interp is None else "%.9f" % odom_interp[0],
+                "" if odom_interp is None else "%.9f" % odom_interp[1],
+                "" if odom_interp is None else "%.9f" % odom_interp[2],
+                "" if odom_interp is None else "%.9f" % odom_interp[3],
+                "" if odom_interp is None else "%.9f" % odom_interp[4],
+                "" if imu_skew_ms == "" else "%.6f" % imu_skew_ms,
+                int(odom_interp is not None),
             ])
     write_csv(os.path.join(output_dir, "aligned.csv"), [
         "frame_index", "lidar_stamp_ns", "pcd_file", "imu_stamp_ns",
-        "odom_stamp_ns",
+        "odom_nearest_stamp_ns", "pose_x_interp", "pose_y_interp",
+        "pose_z_interp", "linear_x_pchip", "angular_z_pchip",
+        "imu_nearest_skew_ms", "odom_interp_valid",
     ], aligned)
 
     print("Extracted IMU: %d, wheel odometry: %d, TF: %d, TF static: %d, cmd_vel: %d" %
@@ -142,8 +160,27 @@ def nearest(rows, times, target):
     return min(candidates, key=lambda row: abs(row[0] - target))
 
 
-def nearest_value(row, times, target):
+def nearest_value(row):
     return "" if row is None else row[0]
+
+
+def interpolate_odom(odom_array, speed_pchip, yaw_rate_pchip, target_ns,
+                     max_gap_ns=200_000_000):
+    """Interpolate odometry only when the bracketing samples are close enough."""
+    times = odom_array[:, 0].astype(np.int64)
+    index = np.searchsorted(times, target_ns, side="left")
+    if index == 0 or index == len(times):
+        return None
+    gap = times[index] - times[index - 1]
+    if gap > max_gap_ns:
+        return None
+    alpha = (target_ns - times[index - 1]) / float(gap)
+    position = odom_array[index - 1, 1:4] + alpha * (
+        odom_array[index, 1:4] - odom_array[index - 1, 1:4])
+    return (
+        position[0], position[1], position[2],
+        float(speed_pchip(target_ns)), float(yaw_rate_pchip(target_ns)),
+    )
 
 
 if __name__ == "__main__":

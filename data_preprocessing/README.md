@@ -55,9 +55,9 @@ docker run --rm --entrypoint /bin/bash \
 
 This writes `imu.csv`, `odometry_wheel.csv`, `cmd_vel.csv`, `tf.csv`,
 `tf_static.csv`, and `aligned.csv` beside the PCD frames. `aligned.csv`
-contains the nearest IMU and odometry timestamps for each LiDAR frame; the
-maximum allowed timestamp skew will be enforced in the temporal dataset
-builder.
+contains nearest IMU values and interpolated odometry values for each LiDAR
+frame. PCHIP is used for speed and yaw rate, linear interpolation for position,
+and odometry gaps over 200 ms are marked invalid.
 
 ## Planned conversion
 

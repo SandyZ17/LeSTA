@@ -17,6 +17,7 @@ RUN printf '%s\n' \
        ros-noetic-nodelet \
        python3-rospy \
        python3-numpy \
+       python3-scipy \
        && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace/data_preprocessing
