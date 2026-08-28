@@ -24,6 +24,28 @@ Work on temporal learning belongs on `feature/temporal-model`; keep the ROS 2/Do
 
 Do not add large point-cloud or Transformer models until the lightweight temporal baseline has been measured and shown to be insufficient.
 
+## Current Experimental Findings
+
+The first Temporal MLP experiment uses 6,548 ten-frame windows with 13
+features per frame. It runs in Docker with PyTorch CUDA 12.9.1. On the current
+motion-derived proxy labels, the best validation results were:
+
+- all features: AUROC 0.8600, AP 0.8465;
+- terrain-only (`step`, `slope`, `roughness`, `curvature`): AUROC 0.5647;
+- motion-only (speed, yaw rate, IMU, time interval): AUROC 0.8695, AP 0.8434.
+
+These results are diagnostic, not a traversability claim. The positive labels
+are based on sustained future motion, while the inputs include current motion
+signals, so the experiment has a label/input shortcut. The `-1` samples are
+unknown rather than verified negatives, and the PU loss can report zero after
+non-negative risk clipping. Do not use these scores as the final model
+selection criterion.
+
+Next priorities are to improve terrain descriptors, add independently
+observable failure or risk signals, and repeat the comparison with sequence-
+level splits and a static LeSTA baseline. Record AUROC, AP, calibration,
+latency, dropped frames, and downstream planning/vehicle-stability metrics.
+
 ## Build, Test, and Development Commands
 
 From the workspace root (or inside the provided Docker container):
