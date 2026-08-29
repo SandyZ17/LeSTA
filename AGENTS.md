@@ -111,6 +111,15 @@ currently produce 594,309, 214,612, and 329,423 samples. A five-epoch CUDA
 smoke test successfully consumed these samples with the existing Temporal MLP;
 full training and ROS2 GridMap integration remain pending.
 
+Full 30-epoch per-cell CUDA training was completed with batch size 2048. The
+best observed AUROC/AP values were 0.7127/0.0817 (`rampway3` validation),
+0.8843/0.3137 (`rampway2` validation), and 0.8662/0.2020 (`rampway1`
+validation). AP is low because only cells inside the future vehicle footprint
+are positive and all other cells are unknown; do not interpret unknown cells
+as verified negatives. The resulting checkpoints are
+`logs/per_cell_causal_train12_val3.pt`, `logs/per_cell_causal_train13_val2.pt`,
+and `logs/per_cell_causal_train23_val1.pt`.
+
 After regenerating the corrected features, the all-feature leave-one-sequence-
 out rerun achieved AUROC/AP 0.6246/0.6677 (`rampway3`), 0.5947/0.4560
 (`rampway2`), and 0.8596/0.6525 (`rampway1`). The mean AUROC/AP is 0.6930/
