@@ -18,6 +18,9 @@ libs/
 # Ignore rosbag files
 *.bag
 
+# Ignore downloaded and generated preprocessing datasets
+data_preprocessing/datasets/
+
 # Ignore model files
 *.pth
 *.pt

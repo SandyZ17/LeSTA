@@ -43,6 +43,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        ros-humble-tf2-geometry-msgs \
        ros-humble-rviz2 \
        ros-humble-rosidl-default-generators \
+       ros-humble-rosbag2-py \
+       ros-humble-rosbag2-storage-default-plugins \
     && rm -rf /var/lib/apt/lists/* \
     && python3 --version
 
