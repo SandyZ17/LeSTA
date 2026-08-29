@@ -120,6 +120,17 @@ For the required GPU run, use the CUDA-enabled Compose profile:
 docker compose --profile training run --rm temporal-train
 ```
 
+Replay a saved Temporal MLP checkpoint sequentially over a causal validation
+sequence and measure ranking quality and GPU latency:
+
+```bash
+docker compose --profile training run --rm temporal-train \
+  python3 /workspace/lesta_ws/src/LeSTA/pylesta/tools/evaluate_temporal_replay.py \
+  --checkpoint /workspace/lesta_ws/src/LeSTA/logs/cv_causal_all_train12_val3.pt \
+  --windows /workspace/lesta_ws/src/LeSTA/data_preprocessing/datasets/urban_traversability/frames/multi_level_rampway3/temporal/temporal_windows.npz \
+  --device cuda
+```
+
 To override training arguments, provide the full command explicitly because
 Compose treats arguments after the service name as a command replacement:
 

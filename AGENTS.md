@@ -95,6 +95,13 @@ the RTX 5080. The checkpoints are `logs/cv_causal_all_train12_val3.pt`,
 `logs/cv_causal_all_train13_val2.pt`, and
 `logs/cv_causal_all_train23_val1.pt`.
 
+The sequential replay tool also passes on CUDA. Using the final saved epochs,
+the validation results are 0.7020/0.7287 on `rampway3`, 0.6775/0.5570 on
+`rampway2`, and 0.8169/0.5757 on `rampway1` (AUROC/AP). Mean GPU window
+latency was 0.0439, 0.0769, and 0.0274 ms respectively. These latency values
+cover model inference only, not ROS message conversion, feature extraction,
+or height-map updates.
+
 After regenerating the corrected features, the all-feature leave-one-sequence-
 out rerun achieved AUROC/AP 0.6246/0.6677 (`rampway3`), 0.5947/0.4560
 (`rampway2`), and 0.8596/0.6525 (`rampway1`). The mean AUROC/AP is 0.6930/
