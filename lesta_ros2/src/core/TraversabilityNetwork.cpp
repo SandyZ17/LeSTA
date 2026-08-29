@@ -81,4 +81,54 @@ TraversabilityNetwork::inference(const std::vector<Eigen::VectorXf> &features) {
   return predictions;
 }
 
+std::vector<float> TraversabilityNetwork::inferenceTemporal(
+    const std::vector<std::vector<Eigen::VectorXf>> &feature_windows) {
+  if (!model_loaded_) {
+    throw std::runtime_error("Model not loaded");
+  }
+  if (feature_windows.empty()) {
+    return {};
+  }
+
+  const auto sequence_length = feature_windows.front().size();
+  if (sequence_length == 0) {
+    throw std::invalid_argument("Temporal feature window must not be empty");
+  }
+
+  std::vector<float> flattened;
+  flattened.reserve(feature_windows.size() * sequence_length * input_dimension_);
+  for (const auto &window : feature_windows) {
+    if (window.size() != sequence_length) {
+      throw std::invalid_argument("Temporal windows must have equal lengths");
+    }
+    for (const auto &feature : window) {
+      if (feature.size() != input_dimension_) {
+        throw std::invalid_argument("Temporal feature dimension mismatch");
+      }
+      flattened.insert(flattened.end(), feature.data(), feature.data() + feature.size());
+    }
+  }
+
+  try {
+    torch::NoGradGuard no_grad;
+    auto options = torch::TensorOptions().dtype(torch::kFloat32);
+    auto input = torch::from_blob(
+        flattened.data(),
+        {static_cast<long>(feature_windows.size()),
+         static_cast<long>(sequence_length),
+         static_cast<long>(input_dimension_)},
+        options).clone();
+    auto output = model_.forward({input}).toTensor().flatten().contiguous();
+    if (output.numel() != static_cast<long>(feature_windows.size())) {
+      throw std::runtime_error("Temporal model output size does not match batch size");
+    }
+    const auto output_cpu = output.to(torch::kCPU);
+    const auto *data = output_cpu.data_ptr<float>();
+    return std::vector<float>(data, data + output_cpu.numel());
+  } catch (const c10::Error &e) {
+    std::cerr << "Error during temporal inference: " << e.what() << std::endl;
+    throw;
+  }
+}
+
 } // namespace lesta

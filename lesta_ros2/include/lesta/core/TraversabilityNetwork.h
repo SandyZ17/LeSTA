@@ -30,6 +30,8 @@ public:
   int inputDimension() const { return input_dimension_; }
   void setInputDimension(int input_dimension) { input_dimension_ = input_dimension; }
   std::vector<float> inference(const std::vector<Eigen::VectorXf> &features);
+  std::vector<float> inferenceTemporal(
+      const std::vector<std::vector<Eigen::VectorXf>> &feature_windows);
 
 private:
   torch::jit::script::Module model_; // pytorch learned model
