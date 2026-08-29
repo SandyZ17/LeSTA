@@ -21,6 +21,10 @@ void FeatureExtractor::ensureFeatureLayers(HeightMap &map) {
   map.addLayer(layers::Feature::SLOPE);
   map.addLayer(layers::Feature::ROUGHNESS);
   map.addLayer(layers::Feature::CURVATURE);
+  map.addLayer(layers::Feature::HEIGHT_RANGE);
+  map.addLayer(layers::Feature::ELEVATION_IQR);
+  map.addLayer(layers::Feature::ROUGHNESS_P95);
+  map.addLayer(layers::Feature::OCCUPIED_CELL_RATIO);
 
   // Layers for visualization of normal vector
   map.addLayer(layers::Feature::NORMAL_X);
@@ -98,6 +102,27 @@ void FeatureExtractor::extractFeatures(
     map.at(layers::Feature::ROUGHNESS, index) = std::sqrt(eigenvalues(0));
     map.at(layers::Feature::CURVATURE, index) =
         std::abs(eigenvalues(0) / covariance.trace());
+    std::vector<double> heights;
+    heights.reserve(neighbors.size());
+    for (const auto &neighbor : neighbors)
+      heights.push_back(neighbor(2));
+    std::sort(heights.begin(), heights.end());
+    const auto percentile = [&heights](double q) {
+      const double position = q * static_cast<double>(heights.size() - 1);
+      const auto lower = static_cast<size_t>(std::floor(position));
+      const auto upper = static_cast<size_t>(std::ceil(position));
+      const double alpha = position - static_cast<double>(lower);
+      return heights[lower] * (1.0 - alpha) + heights[upper] * alpha;
+    };
+    const double median = percentile(0.5);
+    double squared_residual_sum = 0.0;
+    for (const double height : heights)
+      squared_residual_sum += (height - median) * (height - median);
+    map.at(layers::Feature::HEIGHT_RANGE, index) = maxZ - minZ;
+    map.at(layers::Feature::ELEVATION_IQR, index) = percentile(0.75) - percentile(0.25);
+    map.at(layers::Feature::ROUGHNESS_P95, index) = percentile(0.95) - percentile(0.05);
+    map.at(layers::Feature::OCCUPIED_CELL_RATIO, index) =
+        static_cast<double>(neighbors.size()) / 9.0;
     map.at(layers::Feature::NORMAL_X, index) = normal_vector(0);
     map.at(layers::Feature::NORMAL_Y, index) = normal_vector(1);
     map.at(layers::Feature::NORMAL_Z, index) = normal_vector(2);

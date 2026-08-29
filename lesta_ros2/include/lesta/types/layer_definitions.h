@@ -8,6 +8,10 @@ struct Feature {
   static constexpr const char *SLOPE = "feature/slope";
   static constexpr const char *ROUGHNESS = "feature/roughness";
   static constexpr const char *CURVATURE = "feature/curvature";
+  static constexpr const char *HEIGHT_RANGE = "feature/height_range";
+  static constexpr const char *ELEVATION_IQR = "feature/elevation_iqr";
+  static constexpr const char *ROUGHNESS_P95 = "feature/roughness_p95";
+  static constexpr const char *OCCUPIED_CELL_RATIO = "feature/occupied_cell_ratio";
   static constexpr const char *NORMAL_X = "feature/normal_x";
   static constexpr const char *NORMAL_Y = "feature/normal_y";
   static constexpr const char *NORMAL_Z = "feature/normal_z";

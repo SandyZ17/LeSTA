@@ -9,6 +9,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <grid_map_msgs/msg/grid_map.hpp>
 
@@ -25,6 +27,9 @@ public:
     double map_pub_rate;
     bool remove_backpoints;
     bool debug_mode;
+    bool temporal_enabled;
+    std::string odometry_topic;
+    std::string imu_topic;
   } cfg_;
 
   TravPredictionNode();
@@ -64,6 +69,8 @@ private:
 
   // Subscribers & Publishers
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidarscan_;
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odometry_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_downsampled_scan_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_filtered_scan_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_rasterized_scan_;
@@ -78,10 +85,15 @@ private:
   std::unique_ptr<lesta::HeightMapper> mapper_;
   std::unique_ptr<lesta::FeatureExtractor> feature_extractor_;
   std::unique_ptr<lesta::TraversabilityEstimator> trav_estimator_;
+  std::unique_ptr<lesta::TemporalTraversabilityEstimator> temporal_estimator_;
   TransformOps tf_;
   FrameID frame_id_;
 
   // State variables
   bool lidarscan_received_{false};
+  sensor_msgs::msg::Imu::ConstSharedPtr latest_imu_;
+  nav_msgs::msg::Odometry::ConstSharedPtr latest_odometry_;
+  rclcpp::Time previous_lidar_stamp_{0, 0, RCL_ROS_TIME};
+  double previous_linear_x_{0.0};
 };
 } // namespace lesta_ros

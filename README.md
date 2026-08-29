@@ -155,6 +155,15 @@ Our project is built on [ROS](https://www.ros.org/), successfully tested on the 
 
 To be updated...
 
+### ROS2 temporal inference (experimental)
+
+The temporal model is exported to TorchScript for the ROS2 LibTorch node. To
+enable it, set `temporal_network.enabled: true` in
+`lesta_ros2/config/trav_prediction_node.yaml`, and point `model_path` to a
+`.ts.pt` checkpoint. The node expects synchronized `/odom`, `/imu/data`, and
+LiDAR topics; predictions are published per GridMap cell after the 10-frame
+history is filled.
+
 ---
 
 ## Usage

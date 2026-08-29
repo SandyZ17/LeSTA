@@ -5,4 +5,5 @@
 #include "lesta/core/FeatureExtractor.h"
 #include "lesta/core/LabelGenerator.h"
 #include "lesta/core/TraversabilityEstimator.h"
+#include "lesta/core/TemporalTraversabilityEstimator.h"
 #include "lesta/core/TraversabilityMapper.h"

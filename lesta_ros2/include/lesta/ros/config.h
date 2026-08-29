@@ -78,6 +78,18 @@ static lesta::TraversabilityEstimator::Config loadConfig(rclcpp::Node &nh) {
 }
 } // namespace lesta_ros::traversability_estimator
 
+namespace lesta_ros::temporal_traversability_estimator {
+
+static lesta::TemporalTraversabilityEstimator::Config loadConfig(rclcpp::Node &nh) {
+  lesta::TemporalTraversabilityEstimator::Config cfg;
+  cfg.model_path = nh.get_parameter("temporal_network.model_path").as_string();
+  cfg.input_dimension = nh.get_parameter("temporal_network.input_dimension").as_int();
+  cfg.sequence_length = nh.get_parameter("temporal_network.sequence_length").as_int();
+  cfg.binary_threshold = nh.get_parameter("temporal_network.binary_threshold").as_double();
+  return cfg;
+}
+} // namespace lesta_ros::temporal_traversability_estimator
+
 namespace lesta_ros::traversability_mapper {
 
 static lesta::TraversabilityMapper::Config loadConfig(rclcpp::Node &nh) {

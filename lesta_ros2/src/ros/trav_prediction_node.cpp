@@ -12,6 +12,7 @@
 
 #include <grid_map_ros/GridMapRosConverter.hpp>
 #include <pcl_conversions/pcl_conversions.h>
+#include <cmath>
 
 namespace lesta_ros {
 
@@ -34,9 +35,13 @@ TravPredictionNode::TravPredictionNode()
   feature_extractor_ = std::make_unique<lesta::FeatureExtractor>(
       feature_extractor::loadConfig(*this));
 
-  // Traversability Network
-  trav_estimator_ = std::make_unique<lesta::TraversabilityEstimator>(
-      traversability_estimator::loadConfig(*this));
+  if (cfg_.temporal_enabled) {
+    temporal_estimator_ = std::make_unique<lesta::TemporalTraversabilityEstimator>(
+        temporal_traversability_estimator::loadConfig(*this));
+  } else {
+    trav_estimator_ = std::make_unique<lesta::TraversabilityEstimator>(
+        traversability_estimator::loadConfig(*this));
+  }
 
   std::cout << "\033[1;33m[lesta_ros::TravPredictionNode]: "
                "Traversability prediction node initialized. Waiting for scan "
@@ -50,6 +55,13 @@ void TravPredictionNode::loadConfig(rclcpp::Node &nh) {
   cfg_.map_pub_rate = nh.declare_parameter<double>("node.map_publish_rate", 10.0);
   cfg_.remove_backpoints = nh.declare_parameter<bool>("node.remove_backpoints", true);
   cfg_.debug_mode = nh.declare_parameter<bool>("node.debug_mode", false);
+  cfg_.temporal_enabled = nh.declare_parameter<bool>("temporal_network.enabled", false);
+  nh.declare_parameter<std::string>("temporal_network.model_path", "");
+  nh.declare_parameter<int>("temporal_network.input_dimension", 21);
+  nh.declare_parameter<int>("temporal_network.sequence_length", 10);
+  nh.declare_parameter<double>("temporal_network.binary_threshold", 0.5);
+  cfg_.odometry_topic = nh.declare_parameter<std::string>("node.odometry_topic", "/odom");
+  cfg_.imu_topic = nh.declare_parameter<std::string>("node.imu_topic", "/imu/data");
 }
 
 void TravPredictionNode::initializePubSubs() {
@@ -57,6 +69,14 @@ void TravPredictionNode::initializePubSubs() {
   sub_lidarscan_ = nh_.create_subscription<sensor_msgs::msg::PointCloud2>(
       cfg_.lidarscan_topic, rclcpp::SensorDataQoS(),
       std::bind(&TravPredictionNode::lidarScanCallback, this, std::placeholders::_1));
+  if (cfg_.temporal_enabled) {
+    sub_imu_ = nh_.create_subscription<sensor_msgs::msg::Imu>(
+        cfg_.imu_topic, rclcpp::SensorDataQoS(),
+        [this](sensor_msgs::msg::Imu::ConstSharedPtr msg) { latest_imu_ = std::move(msg); });
+    sub_odometry_ = nh_.create_subscription<nav_msgs::msg::Odometry>(
+        cfg_.odometry_topic, rclcpp::SensorDataQoS(),
+        [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { latest_odometry_ = std::move(msg); });
+  }
   pub_downsampled_scan_ = nh_.create_publisher<sensor_msgs::msg::PointCloud2>("/lesta/prediction/scan_downsampled", 1);
   pub_filtered_scan_ = nh_.create_publisher<sensor_msgs::msg::PointCloud2>("/lesta/prediction/scan_filtered", 1);
   pub_rasterized_scan_ = nh_.create_publisher<sensor_msgs::msg::PointCloud2>("/lesta/prediction/scan_rasterized", 1);
@@ -113,7 +133,28 @@ void TravPredictionNode::lidarScanCallback(const sensor_msgs::msg::PointCloud2::
   feature_extractor_->extractFeatures(mapper_->getHeightMap(), measured_indices);
 
   // 6. Traversability estimation
-  trav_estimator_->estimateTraversability(mapper_->getHeightMap(), measured_indices);
+  if (!cfg_.temporal_enabled) {
+    trav_estimator_->estimateTraversability(mapper_->getHeightMap(), measured_indices);
+  } else if (latest_imu_ && latest_odometry_) {
+    const rclcpp::Time stamp(msg->header.stamp);
+    const double dt = previous_lidar_stamp_.nanoseconds() == 0
+                          ? 0.0 : (stamp - previous_lidar_stamp_).seconds();
+    const double speed = latest_odometry_->twist.twist.linear.x;
+    const double yaw_rate = latest_odometry_->twist.twist.angular.z;
+    const double longitudinal_accel = dt > 1e-6 ?
+        (speed - previous_linear_x_) / dt : 0.0;
+    const auto &accel = latest_imu_->linear_acceleration;
+    const auto &gyro = latest_imu_->angular_velocity;
+    Eigen::VectorXf motion(13);
+    motion << speed, yaw_rate, accel.x, accel.y, accel.z, gyro.x, gyro.y, gyro.z,
+        static_cast<float>(dt), static_cast<float>(longitudinal_accel),
+        static_cast<float>(speed * yaw_rate),
+        static_cast<float>(std::sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z)),
+        static_cast<float>(std::sqrt(gyro.x * gyro.x + gyro.y * gyro.y + gyro.z * gyro.z));
+    temporal_estimator_->estimate(mapper_->getHeightMap(), measured_indices, motion);
+    previous_lidar_stamp_ = stamp;
+    previous_linear_x_ = speed;
+  }
 
   // 7. Publish maps
 }

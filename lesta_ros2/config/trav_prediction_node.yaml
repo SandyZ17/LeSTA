@@ -6,6 +6,8 @@ lesta_trav_prediction:
       pose_update_rate: 10.0
       remove_backpoints: true
       debug_mode: false
+      odometry_topic: /odom
+      imu_topic: /imu/data
     frame_id:
       robot_frame: base_link
       map_frame: map
@@ -21,4 +23,10 @@ lesta_trav_prediction:
       model_path: /workspace/models/LeSTA_campus_road_libtorch.pt
       input_dimension: 4
       feature_fields: [step, slope, roughness, curvature]
+      binary_threshold: 0.5
+    temporal_network:
+      enabled: false
+      model_path: /workspace/lesta_ws/src/LeSTA/logs/per_cell_causal_train12_val3.ts.pt
+      input_dimension: 21
+      sequence_length: 10
       binary_threshold: 0.5
