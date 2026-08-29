@@ -99,6 +99,20 @@ interval, derived longitudinal/lateral acceleration, acceleration and gyro
 norms, and eight terrain features including `step`, `slope`, `roughness`, and
 `curvature`.
 
+For costmap-compatible temporal prediction, build per-cell samples aligned to
+the map frame:
+
+```bash
+python3 build_per_cell_temporal_windows.py \
+  --frame-dir datasets/urban_traversability/frames/multi_level_rampway \
+  --window-size 10 --stride 1
+```
+
+This writes `per_cell_temporal/temporal_cell_windows.npz` with shape
+`(samples, 10, 21)`. Each sample represents one map cell and its label is
+assigned from the future vehicle footprint; unvisited cells remain unknown.
+The existing frame-level windows remain available as a diagnostic baseline.
+
 Run the lightweight initial Temporal MLP experiment from the repository root:
 
 ```bash

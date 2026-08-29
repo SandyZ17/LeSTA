@@ -102,6 +102,15 @@ latency was 0.0439, 0.0769, and 0.0274 ms respectively. These latency values
 cover model inference only, not ROS message conversion, feature extraction,
 or height-map updates.
 
+The per-cell refactor has started. `build_per_cell_temporal_windows.py`
+transforms each LiDAR frame into the map frame using the static
+`base_link -> velodyne_tilted` transform and the timestamped `map -> base_link`
+TF, extracts local 3x3 terrain statistics, appends causal motion context, and
+labels cells inside the future vehicle footprint. The three rampway sequences
+currently produce 594,309, 214,612, and 329,423 samples. A five-epoch CUDA
+smoke test successfully consumed these samples with the existing Temporal MLP;
+full training and ROS2 GridMap integration remain pending.
+
 After regenerating the corrected features, the all-feature leave-one-sequence-
 out rerun achieved AUROC/AP 0.6246/0.6677 (`rampway3`), 0.5947/0.4560
 (`rampway2`), and 0.8596/0.6525 (`rampway1`). The mean AUROC/AP is 0.6930/
