@@ -88,6 +88,13 @@ validation). The mean of these independently selected best values is
 previous PCHIP-based run, but labels remain future-motion proxies and the
 three-sequence sample is still small.
 
+The causal data and model pipeline smoke checks pass: all three regenerated
+window files have 21 finite features per frame, no causal timestamp violation,
+and the three causal checkpoints load and produce finite `(batch,)` outputs on
+the RTX 5080. The checkpoints are `logs/cv_causal_all_train12_val3.pt`,
+`logs/cv_causal_all_train13_val2.pt`, and
+`logs/cv_causal_all_train23_val1.pt`.
+
 After regenerating the corrected features, the all-feature leave-one-sequence-
 out rerun achieved AUROC/AP 0.6246/0.6677 (`rampway3`), 0.5947/0.4560
 (`rampway2`), and 0.8596/0.6525 (`rampway1`). The mean AUROC/AP is 0.6930/
