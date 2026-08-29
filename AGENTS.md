@@ -80,6 +80,14 @@ and no aligned sensor timestamp is later than its LiDAR timestamp. Re-run the
 cross-sequence model comparison with these causal windows before interpreting
 performance.
 
+The first retraining with causal windows ran on the RTX 5080 with CUDA. The
+best observed AUROC/AP values were 0.7020/0.7287 (`rampway3` validation),
+0.8044/0.6920 (`rampway2` validation), and 0.8199/0.5984 (`rampway1`
+validation). The mean of these independently selected best values is
+0.7754/0.6730. These scores are more suitable for online evaluation than the
+previous PCHIP-based run, but labels remain future-motion proxies and the
+three-sequence sample is still small.
+
 After regenerating the corrected features, the all-feature leave-one-sequence-
 out rerun achieved AUROC/AP 0.6246/0.6677 (`rampway3`), 0.5947/0.4560
 (`rampway2`), and 0.8596/0.6525 (`rampway1`). The mean AUROC/AP is 0.6930/
