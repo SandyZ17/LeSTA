@@ -1,0 +1,29 @@
+lesta_trav_prediction:
+  ros__parameters:
+    temporal_enabled: true
+    node:
+      lidarscan_topic: /velodyne/points
+      odometry_topic: /odom
+      imu_topic: /imu/data
+      map_publish_rate: 10.0
+      pose_update_rate: 10.0
+      remove_backpoints: true
+      debug_mode: false
+    frame_id:
+      robot_frame: base_link
+      map_frame: map
+    height_mapper:
+      estimator_type: StatMean
+      frame_id: map
+      map_length_x: 10.0
+      map_length_y: 10.0
+      grid_resolution: 0.1
+      min_height_threshold: -0.2
+      max_height_threshold: 1.5
+    feature_extractor:
+      pca_radius: 0.2
+    temporal_network:
+      model_path: /workspace/lesta_ws/src/LeSTA/logs/per_cell_causal_train12_val3.ts.pt
+      input_dimension: 21
+      sequence_length: 10
+      binary_threshold: 0.5

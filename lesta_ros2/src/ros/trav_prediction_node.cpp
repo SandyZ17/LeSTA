@@ -55,7 +55,7 @@ void TravPredictionNode::loadConfig(rclcpp::Node &nh) {
   cfg_.map_pub_rate = nh.declare_parameter<double>("node.map_publish_rate", 10.0);
   cfg_.remove_backpoints = nh.declare_parameter<bool>("node.remove_backpoints", true);
   cfg_.debug_mode = nh.declare_parameter<bool>("node.debug_mode", false);
-  cfg_.temporal_enabled = nh.declare_parameter<bool>("temporal_network.enabled", false);
+  cfg_.temporal_enabled = nh.declare_parameter<bool>("temporal_enabled", false);
   nh.declare_parameter<std::string>("temporal_network.model_path", "");
   nh.declare_parameter<int>("temporal_network.input_dimension", 21);
   nh.declare_parameter<int>("temporal_network.sequence_length", 10);
@@ -257,16 +257,20 @@ void TravPredictionNode::publishHeightmap(const HeightMap &map) {
 
 void TravPredictionNode::publishTravMap(const HeightMap &map) {
   std::vector<std::string> layers = map.getBasicLayers();
-  layers.push_back(height_mapping::layers::Height::ELEVATION_VARIANCE);
-  layers.push_back(lesta::layers::Feature::STEP);
-  layers.push_back(lesta::layers::Feature::SLOPE);
-  layers.push_back(lesta::layers::Feature::ROUGHNESS);
-  layers.push_back(lesta::layers::Feature::CURVATURE);
-  layers.push_back(lesta::layers::Feature::NORMAL_X);
-  layers.push_back(lesta::layers::Feature::NORMAL_Y);
-  layers.push_back(lesta::layers::Feature::NORMAL_Z);
-  layers.push_back(lesta::layers::Traversability::BINARY);
-  layers.push_back(lesta::layers::Traversability::PROBABILITY);
+  const char *optional_layers[] = {
+      height_mapping::layers::Height::ELEVATION_VARIANCE,
+      lesta::layers::Feature::STEP, lesta::layers::Feature::SLOPE,
+      lesta::layers::Feature::ROUGHNESS, lesta::layers::Feature::CURVATURE,
+      lesta::layers::Feature::NORMAL_X, lesta::layers::Feature::NORMAL_Y,
+      lesta::layers::Feature::NORMAL_Z, lesta::layers::Feature::HEIGHT_RANGE,
+      lesta::layers::Feature::ELEVATION_IQR, lesta::layers::Feature::ROUGHNESS_P95,
+      lesta::layers::Feature::OCCUPIED_CELL_RATIO,
+      lesta::layers::Traversability::BINARY,
+      lesta::layers::Traversability::PROBABILITY};
+  for (const auto *layer : optional_layers) {
+    if (map.exists(layer))
+      layers.emplace_back(layer);
+  }
 
   auto msg = grid_map::GridMapRosConverter::toMessage(map, layers);
   pub_travmap_->publish(*msg);

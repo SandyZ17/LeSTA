@@ -8,6 +8,7 @@ lesta_trav_prediction:
       debug_mode: false
       odometry_topic: /odom
       imu_topic: /imu/data
+    temporal_enabled: false
     frame_id:
       robot_frame: base_link
       map_frame: map
