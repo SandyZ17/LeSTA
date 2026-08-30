@@ -153,7 +153,11 @@ def main() -> None:
         write("/tf", TFMessage(transforms=[transform(row)]), ns)
     for row in tf_static_rows:
         ns = int(row["stamp_ns"])
-        write("/tf_static", TFMessage(transforms=[transform(row)]), ns)
+        static_tf = TFMessage(transforms=[transform(row)])
+        write("/tf_static", static_tf, ns)
+        # Also expose the static edge on /tf.  This keeps replay compatible
+        # with consumers that subscribe to /tf with volatile durability.
+        write("/tf", static_tf, ns)
     for row in manifest:
         ns = int(row["stamp_ns"])
         write("/velodyne/points", pointcloud(
