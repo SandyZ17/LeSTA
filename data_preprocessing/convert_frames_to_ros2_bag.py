@@ -132,7 +132,6 @@ def main() -> None:
         "/imu/data": "sensor_msgs/msg/Imu",
         "/odom": "nav_msgs/msg/Odometry",
         "/tf": "tf2_msgs/msg/TFMessage",
-        "/tf_static": "tf2_msgs/msg/TFMessage",
         "/clock": "rosgraph_msgs/msg/Clock",
     }
     for name, type_name in topics.items():
@@ -154,9 +153,8 @@ def main() -> None:
     for row in tf_static_rows:
         ns = int(row["stamp_ns"])
         static_tf = TFMessage(transforms=[transform(row)])
-        write("/tf_static", static_tf, ns)
-        # Also expose the static edge on /tf.  This keeps replay compatible
-        # with consumers that subscribe to /tf with volatile durability.
+        # Replay the fixed sensor edge on /tf.  Writing it as a normal TF
+        # message avoids a rosbag2 QoS mismatch with volatile subscribers.
         write("/tf", static_tf, ns)
     for row in manifest:
         ns = int(row["stamp_ns"])

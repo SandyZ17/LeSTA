@@ -11,6 +11,19 @@ def generate_launch_description():
     ])
     return LaunchDescription([
         Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='rampway2_lidar_extrinsics',
+            arguments=[
+                '--x', '0.04', '--y', '0.0', '--z', '0.572',
+                '--qx', '-0.0079423844', '--qy', '0.1197083765',
+                '--qz', '0.0009576874', '--qw', '0.9927768661',
+                '--frame-id', 'base_link',
+                '--child-frame-id', 'velodyne_tilted',
+            ],
+            output='screen',
+        ),
+        Node(
             package='lesta_ros2',
             executable='trav_prediction_node',
             name='lesta_trav_prediction',
