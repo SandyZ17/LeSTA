@@ -6,17 +6,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     ROS_DISTRO=humble
 
-# Use USTC mirrors for Ubuntu, ROS, and regular Python packages.
+# Use Tsinghua mirrors for Ubuntu, ROS, and regular Python packages.
 RUN printf '%s\n' \
-    'deb https://mirrors.ustc.edu.cn/ubuntu/ jammy main restricted universe multiverse' \
-    'deb https://mirrors.ustc.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse' \
-    'deb https://mirrors.ustc.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse' \
-    'deb https://mirrors.ustc.edu.cn/ubuntu/ jammy-security main restricted universe multiverse' \
+    'deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse' \
+    'deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse' \
+    'deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse' \
+    'deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-security main restricted universe multiverse' \
     > /etc/apt/sources.list \
     && printf '%s\n' \
     '[global]' \
-    'index-url = https://pypi.mirrors.ustc.edu.cn/simple' \
-    'trusted-host = pypi.mirrors.ustc.edu.cn' \
+    'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' \
+    'trusted-host = pypi.tuna.tsinghua.edu.cn' \
     > /etc/pip.conf
 
 # ROS 2 Humble targets Ubuntu 22.04 (Jammy).
@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-dev python3-pip python3-venv \
     && curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
        -o /usr/share/keyrings/ros-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] https://mirrors.ustc.edu.cn/ros2/ubuntu jammy main" \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/ros2/ubuntu jammy main" \
        > /etc/apt/sources.list.d/ros2.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        ros-humble-grid-map-core \
        ros-humble-grid-map-ros \
        ros-humble-grid-map-msgs \
+       ros-humble-grid-map-rviz-plugin \
        ros-humble-pcl-ros \
        ros-humble-pcl-conversions \
        ros-humble-tf2-ros \

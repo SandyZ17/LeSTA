@@ -67,6 +67,17 @@ Visualization Manager:
       Color: 80; 220; 255
       Queue Size: 10
       Decay Time: 0
+    - Class: grid_map_rviz_plugin/GridMap
+      Name: Traversability GridMap
+      Enabled: true
+      Topic: /lesta/prediction/traversability
+      Color Layer: traversability/binary
+      Height Layer: elevation
+      Color Transformer: GridMapLayer
+      Height Transformer: GridMapLayer
+      Show Grid Lines: true
+      History Length: 1
+      Queue Size: 1
     - Class: rviz_default_plugins/PointCloud2
       Name: Filtered Scan
       Enabled: false
