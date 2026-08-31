@@ -6,7 +6,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     ROS_DISTRO=noetic \
     Torch_DIR=/opt/libtorch/share/cmake/Torch \
-    CMAKE_PREFIX_PATH=/opt/libtorch \
     LD_LIBRARY_PATH=/opt/libtorch/lib
 
 # Use USTC mirrors for Ubuntu, ROS 1, and pip packages.
@@ -26,7 +25,7 @@ RUN printf '%s\n' \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl unzip wget git build-essential cmake ninja-build pkg-config \
-    python3-pip python3-catkin-pkg python3-empy python3-rosdep \
+    python3-pip python3-venv python3-catkin-pkg python3-empy python3-rosdep \
     ros-noetic-grid-map-core \
     ros-noetic-grid-map-ros \
     ros-noetic-grid-map-visualization \
@@ -40,16 +39,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-noetic-rviz \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install --no-cache-dir \
-    -i https://mirrors.ustc.edu.cn/pypi/web/simple \
-    catkin-tools catkin-pkg empy==3.3.4
+# ROS Noetic's Ubuntu 20.04 image does not contain the CUDA development
+# toolkit.  CUDA-enabled LibTorch needs nvcc, headers, and CMake's CUDA
+# libraries while configuring the ROS package.
+RUN curl -fL --retry 5 --connect-timeout 30 \
+       -o /tmp/cuda-keyring.deb \
+       https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb \
+    && dpkg -i /tmp/cuda-keyring.deb \
+    && rm /tmp/cuda-keyring.deb \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends cuda-toolkit-12-9 \
+    && ln -sfn /usr/local/cuda-12.9 /usr/local/cuda \
+    && rm -rf /var/lib/apt/lists/*
 
-# CUDA-enabled LibTorch is the C++ runtime required by the original lesta_ros
-# package. cu128 provides Blackwell support for RTX 50-series GPUs. The host
-# NVIDIA driver must support CUDA 12.8 or newer.
+RUN python3 -m venv --system-site-packages /opt/catkin-venv \
+    && /opt/catkin-venv/bin/pip install --no-cache-dir \
+    -i https://mirrors.ustc.edu.cn/pypi/web/simple \
+    --no-deps catkin-tools osrf-pycommon
+
+ENV PATH=/opt/catkin-venv/bin:${PATH}
+ENV CUDA_HOME=/usr/local/cuda-12.9 \
+    CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-12.9 \
+    CUDAToolkit_ROOT=/usr/local/cuda-12.9 \
+    PATH=/usr/local/cuda-12.9/bin:${PATH} \
+    LD_LIBRARY_PATH=/usr/local/cuda-12.9/lib64:/opt/libtorch/lib
+
+# CUDA-enabled LibTorch is kept in the build context so rebuilding the image
+# does not download the multi-gigabyte archive again.
+COPY docker/libtorch-shared-with-deps-2.8.0+cu129.zip /tmp/libtorch.zip
+
 RUN mkdir -p /opt \
-    && wget -q -O /tmp/libtorch.zip \
-       'https://download.pytorch.org/libtorch/cu128/libtorch-cxx11-abi-shared-with-deps-2.7.1%2Bcu128.zip' \
     && unzip -q /tmp/libtorch.zip -d /opt \
     && rm /tmp/libtorch.zip
 
@@ -61,8 +80,17 @@ COPY data_preprocessing/ros1 /workspace/data_preprocessing/ros1
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
     && catkin init \
     && catkin config --extend /opt/ros/${ROS_DISTRO} \
-    && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release \
-    && catkin build
+    && catkin config --merge-devel \
+    && catkin config --cmake-args \
+       -DCMAKE_BUILD_TYPE=Release \
+       -DCMAKE_PREFIX_PATH=/workspace/ros_ws/devel\;/opt/ros/noetic \
+       -DTorch_DIR=/opt/libtorch/share/cmake/Torch \
+       -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR} \
+       -DCUDAToolkit_ROOT=${CUDAToolkit_ROOT} \
+    && catkin build height_mapping_core \
+    && source /workspace/ros_ws/devel/setup.bash \
+    && source /opt/ros/${ROS_DISTRO}/setup.bash \
+    && catkin build lesta
 
 RUN echo 'source /opt/ros/noetic/setup.bash' >> /root/.bashrc \
     && echo 'source /workspace/ros_ws/devel/setup.bash' >> /root/.bashrc
