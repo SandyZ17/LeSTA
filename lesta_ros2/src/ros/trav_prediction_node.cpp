@@ -101,6 +101,12 @@ void TravPredictionNode::initializeTimers() {
 
 void TravPredictionNode::lidarScanCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
 
+  const auto diagnostic = [this](const std::string &stage) {
+    if (cfg_.debug_mode)
+      RCLCPP_INFO(this->get_logger(), "diagnostic stage: %s", stage.c_str());
+  };
+  diagnostic("callback entered");
+
   if (!lidarscan_received_) {
     lidarscan_received_ = true;
     frame_id_.sensor = msg->header.frame_id;
@@ -113,15 +119,19 @@ void TravPredictionNode::lidarScanCallback(const sensor_msgs::msg::PointCloud2::
   if (!tf_.lookupTransform(frame_id_.robot, frame_id_.sensor, sensor2base) ||
       !tf_.lookupTransform(frame_id_.map, frame_id_.robot, base2map))
     return;
+  diagnostic("TF lookup complete");
 
   // 2. Convert ROS msg to PCL data
   auto scan_raw = std::make_shared<pcl::PointCloud<Laser>>();
   pcl::moveFromROSMsg(*msg, *scan_raw);
+  diagnostic("PointCloud2 converted: " + std::to_string(scan_raw->size()) + " points");
 
   // 3. Preprocess scan data: ready for terrain mapping
   auto scan_preprocessed = preprocessScan(scan_raw, sensor2base, base2map);
   if (!scan_preprocessed)
     return;
+  diagnostic("scan preprocessing complete: " +
+             std::to_string(scan_preprocessed->size()) + " points");
 
   // 4. Terrain mapping
   auto transform_sensor2map = TransformOps::multiplyTransforms(sensor2base, base2map);
@@ -129,14 +139,18 @@ void TravPredictionNode::lidarScanCallback(const sensor_msgs::msg::PointCloud2::
                                 transform_sensor2map.transform.translation.y,
                                 transform_sensor2map.transform.translation.z);
   auto measured_indices = terrainMapping(scan_preprocessed, sensor_origin);
+  diagnostic("terrain mapping complete: " +
+             std::to_string(measured_indices.size()) + " measured cells");
 
   // 5. Feature extraction
   feature_extractor_->extractFeatures(mapper_->getHeightMap(), measured_indices);
+  diagnostic("feature extraction complete");
 
   // 6. Traversability estimation
   if (!cfg_.temporal_enabled) {
     trav_estimator_->estimateTraversability(mapper_->getHeightMap(), measured_indices);
   } else if (latest_imu_ && latest_odometry_) {
+    diagnostic("temporal estimation entered");
     const rclcpp::Time stamp(msg->header.stamp);
     const double dt = previous_lidar_stamp_.nanoseconds() == 0
                           ? 0.0 : (stamp - previous_lidar_stamp_).seconds();
@@ -153,6 +167,7 @@ void TravPredictionNode::lidarScanCallback(const sensor_msgs::msg::PointCloud2::
         static_cast<float>(std::sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z)),
         static_cast<float>(std::sqrt(gyro.x * gyro.x + gyro.y * gyro.y + gyro.z * gyro.z));
     temporal_estimator_->estimate(mapper_->getHeightMap(), measured_indices, motion);
+    diagnostic("temporal estimation complete");
     previous_lidar_stamp_ = stamp;
     previous_linear_x_ = speed;
   }
@@ -167,29 +182,65 @@ TravPredictionNode::preprocessScan(const pcl::PointCloud<Laser>::Ptr &scan_raw,
 
   // 1. Transform pointcloud to base frame
   auto scan_base = PointCloudOps::applyTransform<Laser>(scan_raw, sensor2base);
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(), "diagnostic preprocess: sensor->base %zu points",
+                scan_base->size());
 
   // 2. Publish downsampled scan
   auto scan_downsampled = PointCloudOps::downsampleVoxel<Laser>(scan_base, 0.4);
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(), "diagnostic preprocess: voxel %zu points",
+                scan_downsampled->size());
   publishDownsampledScan(scan_downsampled);
 
   // 2. Fast height filtering
   auto scan_preprocessed = std::make_shared<pcl::PointCloud<Laser>>();
   mapper_->fastHeightFilter<Laser>(scan_base, scan_preprocessed);
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(), "diagnostic preprocess: height filter %zu points",
+                scan_preprocessed->size());
 
   // 3. Pass through filter
   auto range = mapper_->getHeightMap().getLength() / 2.0;
   scan_preprocessed =
       PointCloudOps::passThrough<Laser>(scan_preprocessed, "x", -range.x(), range.x());
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(), "diagnostic preprocess: x filter %zu points",
+                scan_preprocessed->size());
   scan_preprocessed =
       PointCloudOps::passThrough<Laser>(scan_preprocessed, "y", -range.y(), range.y());
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(), "diagnostic preprocess: y filter %zu points",
+                scan_preprocessed->size());
 
   // (Optional) Remove remoter points
   if (cfg_.remove_backpoints)
     scan_preprocessed =
         PointCloudOps::filterAngle2D<Laser>(scan_preprocessed, -135.0, 135.0);
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(), "diagnostic preprocess: angle filter %zu points",
+                scan_preprocessed->size());
 
   // 4. Transform pointcloud to map frame
+  const auto &t = base2map.transform.translation;
+  const auto &q = base2map.transform.rotation;
+  if (!std::isfinite(t.x) || !std::isfinite(t.y) || !std::isfinite(t.z) ||
+      !std::isfinite(q.x) || !std::isfinite(q.y) || !std::isfinite(q.z) ||
+      !std::isfinite(q.w) ||
+      (q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w) < 1e-12) {
+    RCLCPP_ERROR(get_logger(),
+                 "Invalid base->map transform; dropping pointcloud");
+    return nullptr;
+  }
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(),
+                "diagnostic preprocess: base->map TF t=(%.3f, %.3f, %.3f) "
+                "q=(%.6f, %.6f, %.6f, %.6f)",
+                t.x, t.y, t.z, q.x, q.y, q.z, q.w);
   scan_preprocessed = PointCloudOps::applyTransform<Laser>(scan_preprocessed, base2map);
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(get_logger(), "diagnostic preprocess: base->map %zu points",
+                scan_preprocessed->size());
 
   if (scan_preprocessed->empty())
     return nullptr;
@@ -288,6 +339,11 @@ void TravPredictionNode::updateMapOrigin() {
   if (!tf_.lookupTransform(frame_id_.map, frame_id_.robot, base2map))
     return;
 
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(this->get_logger(), "diagnostic map origin: %.3f %.3f",
+                base2map.transform.translation.x,
+                base2map.transform.translation.y);
+
   // 2. Update map origin
   auto robot_position = grid_map::Position(base2map.transform.translation.x,
                                            base2map.transform.translation.y);
@@ -296,8 +352,14 @@ void TravPredictionNode::updateMapOrigin() {
 
 void TravPredictionNode::publishMaps() {
 
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(this->get_logger(), "diagnostic publish maps entered");
+
   publishHeightmap(mapper_->getHeightMap());
   publishTravMap(mapper_->getHeightMap());
+
+  if (cfg_.debug_mode)
+    RCLCPP_INFO(this->get_logger(), "diagnostic publish maps complete");
 }
 } // namespace lesta_ros
 
