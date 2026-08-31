@@ -1,0 +1,20 @@
+services:
+  lesta-ros1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ros1
+    image: lesta:ros1-cpu
+    container_name: lesta-ros1
+    network_mode: host
+    stdin_open: true
+    tty: true
+    environment:
+      ROS_MASTER_URI: http://127.0.0.1:11311
+      DISPLAY: ${DISPLAY:-:0}
+    volumes:
+      - ./:/workspace/LeSTA
+      - ./data_preprocessing/datasets/urban_traversability/raw:/workspace/bags:ro
+      - ./models:/root/Downloads:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    working_dir: /workspace/ros_ws
+    command: /bin/bash

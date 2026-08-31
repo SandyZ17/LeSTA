@@ -1,0 +1,68 @@
+FROM ros:noetic-ros-base-focal
+
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    ROS_DISTRO=noetic \
+    Torch_DIR=/opt/libtorch/share/cmake/Torch \
+    CMAKE_PREFIX_PATH=/opt/libtorch \
+    LD_LIBRARY_PATH=/opt/libtorch/lib
+
+# Use USTC mirrors for Ubuntu, ROS 1, and pip packages.
+RUN printf '%s\n' \
+    'deb https://mirrors.ustc.edu.cn/ubuntu/ focal main restricted universe multiverse' \
+    'deb https://mirrors.ustc.edu.cn/ubuntu/ focal-updates main restricted universe multiverse' \
+    'deb https://mirrors.ustc.edu.cn/ubuntu/ focal-security main restricted universe multiverse' \
+    > /etc/apt/sources.list \
+    && printf '%s\n' \
+    'deb [trusted=yes] https://mirrors.ustc.edu.cn/ros/ubuntu focal main' \
+    > /etc/apt/sources.list.d/ros1.list \
+    && printf '%s\n' \
+    '[global]' \
+    'index-url = https://mirrors.ustc.edu.cn/pypi/web/simple' \
+    'trusted-host = mirrors.ustc.edu.cn' \
+    > /etc/pip.conf
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl unzip wget git build-essential cmake ninja-build pkg-config \
+    python3-pip python3-catkin-pkg python3-empy python3-rosdep \
+    ros-noetic-grid-map-core \
+    ros-noetic-grid-map-ros \
+    ros-noetic-grid-map-visualization \
+    ros-noetic-pcl-ros \
+    ros-noetic-pcl-conversions \
+    ros-noetic-tf2-ros \
+    ros-noetic-tf2-eigen \
+    ros-noetic-tf2-geometry-msgs \
+    ros-noetic-velodyne-pointcloud \
+    ros-noetic-nodelet \
+    ros-noetic-rviz \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir \
+    -i https://mirrors.ustc.edu.cn/pypi/web/simple \
+    catkin-tools catkin-pkg empy==3.3.4
+
+# LibTorch is the C++ runtime required by the original lesta_ros package.
+RUN mkdir -p /opt \
+    && wget -q -O /tmp/libtorch.zip \
+       'https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.6.0%2Bcpu.zip' \
+    && unzip -q /tmp/libtorch.zip -d /opt \
+    && rm /tmp/libtorch.zip
+
+WORKDIR /workspace/ros_ws
+COPY height_mapping/height_mapping_core /workspace/ros_ws/src/height_mapping_core
+COPY lesta_ros /workspace/ros_ws/src/lesta
+COPY data_preprocessing/ros1 /workspace/data_preprocessing/ros1
+
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
+    && catkin init \
+    && catkin config --extend /opt/ros/${ROS_DISTRO} \
+    && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release \
+    && catkin build
+
+RUN echo 'source /opt/ros/noetic/setup.bash' >> /root/.bashrc \
+    && echo 'source /workspace/ros_ws/devel/setup.bash' >> /root/.bashrc
+
+CMD ["/bin/bash"]

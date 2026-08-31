@@ -26,6 +26,57 @@ pipeline is validated.
 
 ## ROS 1 packet decoding
 
+### Original ROS1 LeSTA reproduction
+
+The `lesta_ros1` branch includes the original ROS1 packages and a separate
+LibTorch-enabled image. Build it from the repository root:
+
+```bash
+docker compose -f docker-compose.ros1.yml build lesta-ros1
+docker compose -f docker-compose.ros1.yml up -d lesta-ros1
+```
+
+Place the original TorchScript checkpoint at
+`models/LeSTA_campus_road_libtorch.pt`; it is mounted inside the container as
+`/root/Downloads/LeSTA_campus_road_libtorch.pt`, matching the original YAML.
+Inside the container, source the workspace before launching ROS:
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /workspace/ros_ws/devel/setup.bash
+roscore
+```
+
+In another terminal, start the original node:
+
+```bash
+docker exec -it lesta-ros1 bash
+source /opt/ros/noetic/setup.bash
+source /workspace/ros_ws/devel/setup.bash
+roslaunch lesta traversability_prediction.launch
+```
+
+In a third terminal, start the Velodyne decoder and replay the original
+Rampway2 packet bag:
+
+```bash
+docker exec -it lesta-ros1 bash
+source /opt/ros/noetic/setup.bash
+roslaunch /workspace/LeSTA/data_preprocessing/ros1/vlp16packet_to_pointcloud.launch \
+  packet_topic:=/velodyne_tilted/velodyne_packets
+```
+
+Then run:
+
+```bash
+rosbag play /workspace/bags/multi_level_rampway/multi_level_rampway2.orig.bag \
+  --clock -r 3
+```
+
+The original ROS1 output is published on
+`/lesta/prediction/traversability`. Compare it with the ROS2 output using the
+same bag segment, playback rate, and RViz fixed frame.
+
 Build the isolated decoder image from this directory:
 
 ```bash
