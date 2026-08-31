@@ -30,9 +30,24 @@ public:
     if (ts.child_frame_id == ts.header.frame_id)
       return input;
 
-    auto affine = toAffine3d(ts.transform);
+    const auto affine = toAffine3d(ts.transform).cast<float>();
     auto output = std::make_shared<Cloud<T>>();
-    pcl::transformPointCloud(*input, *output, affine);
+    output->points.reserve(input->points.size());
+    for (const auto &point : input->points) {
+      if (!std::isfinite(point.x) || !std::isfinite(point.y) ||
+          !std::isfinite(point.z))
+        continue;
+      T transformed = point;
+      const Eigen::Vector3f xyz = affine *
+          Eigen::Vector3f(point.x, point.y, point.z);
+      transformed.x = xyz.x();
+      transformed.y = xyz.y();
+      transformed.z = xyz.z();
+      output->points.push_back(transformed);
+    }
+    output->width = static_cast<std::uint32_t>(output->points.size());
+    output->height = 1;
+    output->is_dense = true;
     output->header = input->header;
     output->header.frame_id = ts.header.frame_id;
     return output;
