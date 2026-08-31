@@ -149,6 +149,7 @@ void TravPredictionNode::lidarScanCallback(const sensor_msgs::msg::PointCloud2::
   // 6. Traversability estimation
   if (!cfg_.temporal_enabled) {
     trav_estimator_->estimateTraversability(mapper_->getHeightMap(), measured_indices);
+    prediction_ready_ = true;
   } else if (latest_imu_ && latest_odometry_) {
     diagnostic("temporal estimation entered");
     const rclcpp::Time stamp(msg->header.stamp);
@@ -170,6 +171,7 @@ void TravPredictionNode::lidarScanCallback(const sensor_msgs::msg::PointCloud2::
     diagnostic("temporal estimation complete");
     previous_lidar_stamp_ = stamp;
     previous_linear_x_ = speed;
+    prediction_ready_ = true;
   }
 
   // 7. Publish maps
@@ -351,6 +353,9 @@ void TravPredictionNode::updateMapOrigin() {
 }
 
 void TravPredictionNode::publishMaps() {
+
+  if (!prediction_ready_)
+    return;
 
   if (cfg_.debug_mode)
     RCLCPP_INFO(this->get_logger(), "diagnostic publish maps entered");

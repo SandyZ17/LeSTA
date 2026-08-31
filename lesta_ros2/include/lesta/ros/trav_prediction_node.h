@@ -91,6 +91,7 @@ private:
 
   // State variables
   bool lidarscan_received_{false};
+  bool prediction_ready_{false};
   sensor_msgs::msg::Imu::ConstSharedPtr latest_imu_;
   nav_msgs::msg::Odometry::ConstSharedPtr latest_odometry_;
   rclcpp::Time previous_lidar_stamp_{0, 0, RCL_ROS_TIME};
