@@ -1,0 +1,104 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Velodyne1
+        - /Downsampled Scan1
+        - /Rasterized Scan1
+    Tree Height: 600
+  - Class: rviz_common/Selection
+    Name: Selection
+  - Class: rviz_common/Tool Properties
+    Name: Tool Properties
+  - Class: rviz_common/Views
+    Name: Views
+  - Class: rviz_common/Time
+    Name: Time
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Reference Frame: map
+      Plane: XY
+      Plane Cell Count: 100
+      Cell Size: 1
+      Color: 160; 160; 164
+      Alpha: 0.5
+    - Class: rviz_default_plugins/Axes
+      Name: Base Link Axes
+      Enabled: true
+      Reference Frame: base_link
+      Length: 1
+      Radius: 0.05
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Velodyne
+      Enabled: true
+      Topic: /velodyne/points
+      Use Fixed Frame: true
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+      Channel Name: intensity
+      Queue Size: 10
+      Decay Time: 0
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Downsampled Scan
+      Enabled: true
+      Topic: /lesta/prediction/scan_downsampled
+      Use Fixed Frame: true
+      Style: Points
+      Size (Pixels): 3
+      Color Transformer: FlatColor
+      Color: 255; 220; 80
+      Queue Size: 10
+      Decay Time: 0.5
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Rasterized Scan
+      Enabled: true
+      Topic: /lesta/prediction/scan_rasterized
+      Use Fixed Frame: true
+      Style: Boxes
+      Size (m): 0.08
+      Color Transformer: FlatColor
+      Color: 80; 220; 255
+      Queue Size: 10
+      Decay Time: 0
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Filtered Scan
+      Enabled: false
+      Topic: /lesta/prediction/scan_filtered
+      Use Fixed Frame: true
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: FlatColor
+      Color: 120; 255; 120
+      Queue Size: 10
+      Decay Time: 0
+  Global Options:
+    Fixed Frame: map
+    Background Color: 48; 48; 48
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/PublishPoint
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 10
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.6
+      Yaw: 0.8
+Window Geometry:
+  Height: 900
+  Width: 1400

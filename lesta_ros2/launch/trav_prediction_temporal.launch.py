@@ -12,7 +12,7 @@ def generate_launch_description():
         share, 'config', 'temporal_trav_prediction_node.yaml'
     ])
     rviz_config = PathJoinSubstitution([
-        share, 'launch', 'include', 'traversability_prediction.rviz'
+        share, 'launch', 'include', 'traversability_prediction_ros2.rviz'
     ])
     return LaunchDescription([
         DeclareLaunchArgument(
