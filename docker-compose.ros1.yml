@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.ros1
-    image: lesta:ros1-cu124
+    image: lesta:ros1-cu128
     container_name: lesta-ros1
     network_mode: host
     stdin_open: true
