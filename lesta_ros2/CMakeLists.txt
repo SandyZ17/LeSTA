@@ -58,7 +58,9 @@ target_link_libraries(label_generation_node "${cpp_typesupport_target}")
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch
-  FILES_MATCHING PATTERN "*.launch.py")
+  FILES_MATCHING
+  PATTERN "*.launch.py"
+  PATTERN "*.rviz")
 
 ament_export_dependencies(rosidl_default_runtime)
 ament_package()

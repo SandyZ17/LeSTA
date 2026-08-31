@@ -113,7 +113,7 @@ Visualization Manager:
       Color: 233; 185; 110
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 211; 215; 207
       Min Color: 211; 215; 207
@@ -169,7 +169,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 186; 189; 182
       Max Intensity: 1
@@ -224,14 +224,14 @@ Visualization Manager:
       Invert Rainbow: true
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: HeightMap (Cloud)
+      Name: Filtered Scan (Cloud)
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.09000000357627869
       Style: Spheres
-      Topic: /lesta/prediction/traversability_cloud
+      Topic: /lesta/prediction/scan_filtered
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -268,7 +268,7 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
-      Enabled: true
+      Enabled: false
       Links:
         All Links Enabled: true
         Expand Joint Details: false

@@ -1,7 +1,9 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 
 
 def generate_launch_description():
@@ -9,7 +11,14 @@ def generate_launch_description():
     params = PathJoinSubstitution([
         share, 'config', 'temporal_trav_prediction_node.yaml'
     ])
+    rviz_config = PathJoinSubstitution([
+        share, 'launch', 'include', 'traversability_prediction.rviz'
+    ])
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'use_rviz', default_value='false',
+            description='Start RViz2 with the traversability prediction displays.'
+        ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -29,5 +38,13 @@ def generate_launch_description():
             name='lesta_trav_prediction',
             output='screen',
             parameters=[params],
+        ),
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', rviz_config],
+            condition=IfCondition(LaunchConfiguration('use_rviz')),
+            output='screen',
         ),
     ])
