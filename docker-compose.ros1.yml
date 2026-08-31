@@ -3,13 +3,16 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.ros1
-    image: lesta:ros1-cpu
+    image: lesta:ros1-cu124
     container_name: lesta-ros1
     network_mode: host
     stdin_open: true
     tty: true
+    gpus: all
     environment:
       ROS_MASTER_URI: http://127.0.0.1:11311
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics
       DISPLAY: ${DISPLAY:-:0}
     volumes:
       - ./:/workspace/LeSTA

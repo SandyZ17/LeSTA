@@ -33,6 +33,7 @@ public:
 
 private:
   torch::jit::script::Module model_; // pytorch learned model
+  torch::Device device_{torch::kCPU};
   bool model_loaded_{false};
   int input_dimension_{-1};
 };

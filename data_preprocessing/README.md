@@ -29,13 +29,15 @@ pipeline is validated.
 ### Original ROS1 LeSTA reproduction
 
 The `lesta_ros1` branch includes the original ROS1 packages and a separate
-LibTorch-enabled image. Build it from the repository root:
+CUDA-enabled LibTorch image. Build it from the repository root:
 
 ```bash
 docker compose -f docker-compose.ros1.yml build lesta-ros1
 docker compose -f docker-compose.ros1.yml up -d lesta-ros1
 ```
 
+The image uses CUDA-enabled LibTorch 2.6 (cu124) and Compose passes through all
+NVIDIA GPUs. Verify GPU access with `nvidia-smi` on the host before starting.
 Place the original TorchScript checkpoint at
 `models/LeSTA_campus_road_libtorch.pt`; it is mounted inside the container as
 `/root/Downloads/LeSTA_campus_road_libtorch.pt`, matching the original YAML.

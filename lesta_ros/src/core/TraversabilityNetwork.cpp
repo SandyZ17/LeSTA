@@ -16,9 +16,9 @@ namespace lesta {
 bool TraversabilityNetwork::loadCheckpoint(const std::string &model_path) {
   try {
     // Load the TorchScript model
-    torch::Device device = torch::kCPU;
-    // torch::Device device = torch::cuda::is_available() ? torch::kCUDA : torch::kCPU;
-    model_ = torch::jit::load(model_path, device);
+    device_ = torch::cuda::is_available() ? torch::Device(torch::kCUDA)
+                                          : torch::Device(torch::kCPU);
+    model_ = torch::jit::load(model_path, device_);
     model_.eval();
     model_loaded_ = true;
 
@@ -31,7 +31,7 @@ bool TraversabilityNetwork::loadCheckpoint(const std::string &model_path) {
 
     // Print model information
     std::cout << "\033[1;32m[lesta::TraversabilityNetwork]: Model loaded to "
-              << (device.is_cuda() ? "GPU" : "CPU") << "\033[0m" << std::endl;
+              << (device_.is_cuda() ? "GPU" : "CPU") << "\033[0m" << std::endl;
     std::cout << "\033[1;32m[lesta::TraversabilityNetwork]: Model checkpoint: "
               << model_name << "\033[0m" << std::endl;
     return true;
@@ -61,6 +61,7 @@ TraversabilityNetwork::inference(const std::vector<Eigen::VectorXf> &features) {
       auto options = torch::TensorOptions().dtype(torch::kFloat32);
       torch::Tensor input_tensor =
           torch::from_blob(feature_vec.data(), {1, input_dimension_}, options).clone();
+      input_tensor = input_tensor.to(device_);
 
       // Perform inference
       std::vector<torch::jit::IValue> inputs;

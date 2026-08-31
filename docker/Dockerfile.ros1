@@ -44,10 +44,11 @@ RUN python3 -m pip install --no-cache-dir \
     -i https://mirrors.ustc.edu.cn/pypi/web/simple \
     catkin-tools catkin-pkg empy==3.3.4
 
-# LibTorch is the C++ runtime required by the original lesta_ros package.
+# CUDA-enabled LibTorch is the C++ runtime required by the original lesta_ros
+# package. The host NVIDIA driver must support CUDA 12.4 or newer.
 RUN mkdir -p /opt \
     && wget -q -O /tmp/libtorch.zip \
-       'https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.6.0%2Bcpu.zip' \
+       'https://download.pytorch.org/libtorch/cu124/libtorch-cxx11-abi-shared-with-deps-2.6.0%2Bcu124.zip' \
     && unzip -q /tmp/libtorch.zip -d /opt \
     && rm /tmp/libtorch.zip
 
