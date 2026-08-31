@@ -13,6 +13,7 @@
 #include <grid_map_ros/GridMapRosConverter.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 #include <cmath>
+#include <set>
 
 namespace lesta_ros {
 
@@ -221,10 +222,14 @@ TravPredictionNode::getMeasuredIndices(const HeightMap &map,
                                        const pcl::PointCloud<Laser>::Ptr &input_scan) {
   std::vector<grid_map::Index> indices;
   indices.reserve(input_scan->size());
+  std::set<std::pair<int, int>> unique_indices;
   for (const auto &point : input_scan->points) {
+    if (!std::isfinite(point.x) || !std::isfinite(point.y) ||
+        !std::isfinite(point.z))
+      continue;
     grid_map::Position position(point.x, point.y);
     grid_map::Index index;
-    if (map.getIndex(position, index))
+    if (map.getIndex(position, index) && unique_indices.emplace(index.x(), index.y()).second)
       indices.push_back(index);
   }
   return indices;

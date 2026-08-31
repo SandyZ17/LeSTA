@@ -9,6 +9,8 @@
 
 #include "lesta/core/HeightMapper.h"
 
+#include <cmath>
+
 namespace lesta {
 
 HeightMapper::HeightMapper(const Config &cfg)
@@ -107,6 +109,10 @@ HeightMapper::cloudRasterization(const typename pcl::PointCloud<PointT>::Ptr &cl
   // grid cell: first, second -> (x_index, y_index), point
   std::unordered_map<std::pair<int, int>, PointT, pair_hash> grid_map;
   for (const auto &point : *cloud) {
+    if (!std::isfinite(point.x) || !std::isfinite(point.y) ||
+        !std::isfinite(point.z)) {
+      continue;
+    }
     int x_index = std::floor(point.x / gridSize);
     int y_index = std::floor(point.y / gridSize);
 
